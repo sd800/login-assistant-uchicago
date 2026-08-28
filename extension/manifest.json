@@ -1,0 +1,70 @@
+{
+  "manifest_version": 3,
+  "name": "UChicago Login Assistant",
+  "description": "Make your UChicago account sign-in easier and faster.",
+  "version": "0.2.11",
+  "minimum_chrome_version": "120",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "permissions": [
+    "storage",
+    "scripting",
+    "webNavigation",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://uchicago.okta.com/*",
+    "https://*.duosecurity.com/*",
+    "https://portal.uchicago.edu/*",
+    "https://courses.uchicago.edu/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "UChicago Login Assistant",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png"
+    }
+  },
+  "options_page": "settings.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://uchicago.okta.com/*"
+      ],
+      "js": [
+        "content/routes.js",
+        "content/dom.js",
+        "content/okta.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": [
+        "https://portal.uchicago.edu/ais",
+        "https://portal.uchicago.edu/ais/*",
+        "https://courses.uchicago.edu/*"
+      ],
+      "js": [
+        "content/routes.js",
+        "content/dom.js",
+        "content/entry.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'"
+  }
+}

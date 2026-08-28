@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="Settings · UChicago Login Assistant">UChicago</title>
+  <link rel="stylesheet" href="ui.css">
+  <link rel="icon" type="image/png" href="icons/icon-32.png">
+</head>
+<body data-locale-pending>
+<main class="shell">
+  <header class="top">
+    <div class="brand settings-brand"><img class="brand-icon" src="icons/icon-128.png" width="64" height="64" alt=""><div><strong lang="en-US">UChicago</strong><small data-i18n>Login Assistant</small></div></div>
+  </header>
+  <h1 class="page-title" data-i18n>Settings</h1>
+  <section class="section language-settings" aria-labelledby="language-label">
+    <div class="language-heading">
+      <label id="language-label" for="language" data-i18n>Language</label>
+      <select id="language" aria-describedby="language-help">
+        <option value="en-US" data-language-name="en-US" lang="en-US">English</option>
+        <option value="zh-CN" data-language-name="zh-CN" lang="zh-CN">Simplified Chinese</option>
+      </select>
+    </div>
+    <p class="sr-only" id="language-help" data-i18n>Applies to all extension windows.</p>
+    <p class="status" id="language-status" role="status" aria-live="polite"></p>
+  </section>
+  <div class="settings-grid">
+    <div class="settings-main">
+      <section class="section" aria-labelledby="account-heading">
+        <h2 id="account-heading" data-i18n>Account</h2>
+        <form id="account-form" aria-labelledby="account-heading">
+          <div class="field">
+            <label for="username" data-i18n>CNetID or UCMEDID</label>
+            <input id="username" autocomplete="off" spellcheck="false" maxlength="254" required>
+          </div>
+          <div class="field">
+            <label for="password" data-i18n>Password</label>
+            <input id="password" type="password" autocomplete="new-password" maxlength="1024" aria-describedby="password-help">
+            <p class="help" id="password-help" data-i18n>Stored on this device. Used only after you confirm.</p>
+          </div>
+          <div class="actions"><button class="primary" id="save-account" type="submit" data-i18n>Save</button></div>
+          <p class="status" id="account-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <section class="section" aria-labelledby="duo-heading">
+        <h2 id="duo-heading" data-i18n>Duo &amp; passkeys</h2>
+        <form id="settings-form" aria-labelledby="duo-heading">
+          <p class="help duo-summary" data-i18n>Continue supported Duo verification after you confirm sign-in.</p>
+          <div class="field">
+            <label for="selected-credential" data-i18n>Passkey for this account</label>
+            <select id="selected-credential"><option value="" data-i18n>Ask each time or use another provider</option></select>
+            <p class="help" data-i18n>Select a passkey only after Duo confirms registration.</p>
+          </div>
+          <div class="actions"><button class="primary" id="save" type="submit" data-i18n>Save</button></div>
+          <p class="status" id="save-status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+      <details class="disclosure" id="saved-passkeys">
+        <summary data-i18n>Saved passkeys</summary>
+        <div class="disclosure-body">
+          <div id="credentials"><p class="muted" data-i18n>Loading passkeys…</p></div>
+          <p class="status" id="credentials-status" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <details class="disclosure" id="pin-settings">
+        <summary data-i18n>Verification PIN</summary>
+        <div class="disclosure-body">
+          <p class="help" data-i18n>Optional. Enter this PIN when Duo asks you to verify your identity. It does not lock your saved data.</p>
+          <form id="pin-form">
+            <div class="field" id="old-pin-field" hidden>
+              <label for="old-pin" data-i18n>Current verification PIN</label>
+              <input id="old-pin" type="password" autocomplete="off" maxlength="128">
+            </div>
+            <div class="field">
+              <label for="new-pin" data-i18n>New verification PIN</label>
+              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" aria-describedby="pin-help">
+              <p class="help" id="pin-help" data-i18n>6–128 characters. To remove a PIN, enter the current PIN and leave this blank.</p>
+            </div>
+            <div class="actions"><button type="submit" data-i18n>Update PIN</button></div>
+            <p class="status" id="pin-status" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </details>
+    </div>
+    <aside class="settings-help" aria-labelledby="help-heading">
+      <section class="help-section" id="setup-help">
+        <h2 id="help-heading" data-i18n>Help</h2>
+        <h3 data-i18n>Getting started</h3>
+        <ol>
+          <li data-i18n>Enter your CNetID or UCMEDID and password, then choose Save in Account.</li>
+          <li data-i18n>Open my.UChicago, Canvas, or another service with UChicago sign-in, then confirm the sign-in prompt.</li>
+          <li data-i18n>To register a passkey, open Duo device management in the same sign-in tab using an existing verification method. Add a passkey, then confirm the extension’s save prompt.</li>
+          <li data-i18n>After Duo confirms registration, select the passkey in Duo &amp; passkeys and choose Save.</li>
+        </ol>
+        <p class="help" data-i18n>If sign-in stops at Duo, check this extension’s site access in Chrome.</p>
+        <p class="notice" data-i18n>Keep another Duo verification method.</p>
+      </section>
+      <details class="disclosure">
+        <summary data-i18n>Recent activity</summary>
+        <div class="disclosure-body">
+          <ul class="history" id="history"></ul>
+          <p class="help" data-i18n>Up to 20 entries from the past 24 hours. Older entries are deleted automatically. Passwords, private keys, and full sign-in URLs are never recorded.</p>
+        </div>
+      </details>
+      <details class="disclosure" id="privacy-notice">
+        <summary data-i18n>Privacy</summary>
+        <div class="disclosure-body">
+          <dl class="privacy-notice">
+            <dt data-i18n>Stored locally</dt>
+            <dd data-i18n>Account details, passkey private keys, and the PIN verification record are encrypted in this Chrome profile. Settings and recent activity stay here too. Activity keeps up to 20 entries from the past 24 hours, without passwords, private keys, or full sign-in URLs.</dd>
+            <dt data-i18n>During sign-in</dt>
+            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. It checks each page address so passkey responses are limited to that sign-in. Private keys and the verification PIN stay on your device.</dd>
+            <dt data-i18n>No tracking</dt>
+            <dd data-i18n>There are no ads, analytics, cloud sync, or servers receiving data for this extension. It does not access the Chrome password manager. School sites, Okta, Duo, and other passkey providers have their own privacy policies.</dd>
+            <dt data-i18n>Deleting data</dt>
+            <dd data-i18n>Delete local account data removes the saved account, password, passkeys, and PIN, and resets settings, language, and activity. Uninstalling removes all data saved by this extension. Neither action deletes your school account or Duo registrations.</dd>
+            <dt data-i18n>Security limits</dt>
+            <dd data-i18n>The extension can read its encrypted data without an additional password. Someone with control of this Chrome profile or extension may also access saved credentials. The verification PIN does not lock this data.</dd>
+          </dl>
+        </div>
+      </details>
+      <details class="disclosure">
+        <summary data-i18n>Local data</summary>
+        <div class="disclosure-body">
+          <p class="help" data-i18n>Saved data is available to anyone with control of this device or extension. Uninstalling the extension deletes all data it has saved.</p>
+          <div class="actions"><button class="danger" type="button" id="clear" data-i18n>Delete local account data</button></div>
+          <p class="status" id="clear-status" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+    </aside>
+  </div>
+  <footer class="footer">
+    <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
+    <p class="version" data-i18n>Version 0.2.11</p>
+    <p lang="en-US" translate="no">© 2026 Songming.org</p>
+  </footer>
+</main>
+<script type="module" src="settings.js"></script>
+</body>
+</html>

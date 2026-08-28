@@ -1,0 +1,8 @@
+dist/
+.DS_Store
+node_modules/
+*.log
+.env*
+coverage/
+CHANGELOG.md
+CHANGELOG_zh.md

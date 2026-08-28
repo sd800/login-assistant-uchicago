@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en-US">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title data-i18n="UChicago Login Assistant">UChicago</title>
+  <link rel="stylesheet" href="ui.css">
+  <link rel="icon" type="image/png" href="icons/icon-32.png">
+</head>
+<body class="popup" data-locale-pending>
+  <header class="popup-header">
+    <div class="brand"><img class="brand-icon" src="icons/icon-128.png" width="24" height="24" alt=""><strong lang="en-US">UChicago</strong></div>
+    <div class="popup-tools">
+      <button class="icon-button" id="toggle" type="button" role="switch" aria-checked="false" aria-label="Sign-in assistant" title="Sign-in assistant" data-i18n-aria-label="Sign-in assistant" data-i18n-title="Sign-in assistant" disabled>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3v9"/><path d="M6.3 5.8a8 8 0 1 0 11.4 0"/></svg>
+      </button>
+      <button class="icon-button" id="retry" type="button" aria-label="Retry sign-in" title="Retry sign-in" data-i18n-aria-label="Retry sign-in" data-i18n-title="Retry sign-in">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 5v6h-6"/><path d="M20 11a8 8 0 1 0-2 7"/></svg>
+      </button>
+      <button class="icon-button" id="settings" type="button" aria-label="Settings" title="Settings" data-i18n-aria-label="Settings" data-i18n-title="Settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 7h7m4 0h5M4 17h3m4 0h9"/><circle cx="13" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg>
+      </button>
+    </div>
+  </header>
+  <main>
+    <div class="account-summary">
+      <div class="account-line">
+        <strong id="account" data-i18n>Loading account…</strong>
+        <div class="saved-indicators" id="saved-indicators" hidden>
+          <span class="saved-indicator" id="account-saved" role="img" aria-label="Account and password saved" title="Account and password saved" data-i18n-aria-label="Account and password saved" data-i18n-title="Account and password saved" hidden>
+            <svg width="26" height="20" viewBox="0 0 26 20" preserveAspectRatio="xMidYMid meet" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="1" y="2" width="24" height="16" rx="2.5"/><circle cx="8" cy="7" r="2.25"/><path d="M4.5 14.5a3.5 3.5 0 0 1 7 0M15 7h6"/><g fill="currentColor" stroke="none"><circle cx="15.5" cy="12.5" r=".7"/><circle cx="18.5" cy="12.5" r=".7"/><circle cx="21.5" cy="12.5" r=".7"/></g></svg>
+          </span>
+          <span class="saved-indicator" id="passkey-saved" role="img" aria-label="Passkey saved" title="Passkey saved" data-i18n-aria-label="Passkey saved" data-i18n-title="Passkey saved" hidden>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7" cy="8" r="4"/><path d="m10 11 10 10m-3-3 3-3m-6 0 3-3"/></svg>
+          </span>
+        </div>
+      </div>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </main>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
