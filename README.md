@@ -4,14 +4,17 @@
 
 Login Assistant for UChicago is a personal Chrome extension that makes your UChicago account sign-in simpler and faster.
 
-After you confirm the sign-in prompt, the assistant enters your saved credentials and completes supported Okta sign-in steps. Duo verification runs automatically when a usable passkey is saved for your account; otherwise, you complete it yourself.
+Signing in a school account should be a simple and quick process. Meanwhile, at the University of Chicago, the process can involve several steps across Okta and Duo. Users often need to enter their username and password on separate pages, wait through multiple redirects, select a verification method, and complete Duo authentication using a fingerprint or one-time code. Because this process is repeated frequently when accessing essential services such as my.UChicago and Canvas, reducing these repetitive interactions can make everyday access more efficient.
 
-- Works with my.UChicago, Canvas, and third-party applications that use UChicago Okta.
-- Follows the approved sign-in through redirects and different Duo subdomains, without manual Duo URL setup.
-- Stores account details and newly registered passkeys in your Chrome profile.
-- Includes English and Simplified Chinese interfaces with automatic light and dark appearance.
+This Chrome extension streamlines the UChicago account sign-in flow with user approval each time. By automatically handling the repetitive steps in the process, it makes signing in faster and more convenient while leaving authentication under the user's control.
 
-Current version: 1.6.15
+- Supports my.UChicago, Canvas, and third-party applications that use UChicago account sign-in.
+- Automatically completes the UChicago account sign-in flow each time you authorize a sign-in (account and passkey setup needed beforehand).
+- Securely stores account information and passkeys on your device using industry-standard encryption.
+- Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
+- Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
+
+Current version: 1.6.16
 
 Release date: August 29, 2026
 
