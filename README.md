@@ -2,7 +2,7 @@
 
 [Simplified Chinese](README_zh.md)
 
-Login Assistant for UChicago is a personal Chrome extension that makes signing in to your UChicago account easier and faster.
+Login Assistant for UChicago is a personal Chrome extension that makes your UChicago account sign-in simpler and faster.
 
 After you confirm the sign-in prompt, the assistant enters your saved credentials and completes supported Okta sign-in steps. Duo verification runs automatically when a usable passkey is saved for your account; otherwise, you complete it yourself.
 
@@ -11,7 +11,7 @@ After you confirm the sign-in prompt, the assistant enters your saved credential
 - Stores account details and newly registered passkeys in your Chrome profile.
 - Includes English and Simplified Chinese interfaces with automatic light and dark appearance.
 
-Current version: 1.6.13
+Current version: 1.6.15
 
 Release date: August 29, 2026
 
@@ -91,7 +91,7 @@ Keep another Duo verification method.
 
 ## Privacy and security
 
-Your account password, passkey private keys, and PIN verification record are securely saved in the extension's local IndexedDB using industry-standard encryption with AES-GCM. The decryption key is also stored locally and can be used automatically by the extension. This does not protect saved credentials from someone who controls your device, Chrome profile, or extension environment.
+Your account password, passkey private keys, and PIN verification record are securely saved in the extension's local IndexedDB using industry-standard encryption with AES-GCM. The decryption key is also stored locally and can be used automatically by the extension. This does not protect saved credentials from someone who controls your device, Chrome profile, and extension environment.
 
 - No developer server, analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
 - Account credentials are filled only on recognized UChicago Okta sign-in pages after approval. Passkey responses are restricted to Duo pages admitted into that flow; private keys remain local.

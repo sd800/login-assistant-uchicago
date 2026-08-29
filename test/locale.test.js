@@ -386,21 +386,21 @@ test('settings labels and privacy help are localized and the popup stays compact
   assert.equal(translate("Privacy", "zh-CN"), "\u9690\u79c1\u8bf4\u660e");
   assert.equal(translate('Confirm to log in to uchicago.edu.', 'zh-CN'), '\u786e\u8ba4\u4ee5\u767b\u5f55 uchicago.edu');
   assert.equal(translate('Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.', 'zh-CN'),
-    '用户名和密码已使用符合行业标准的加密方式安全保存在本设备上，仅用于您每次明确授权的登录。');
+    '\u7528\u6237\u540d\u548c\u5bc6\u7801\u5df2\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u4ec5\u7528\u4e8e\u60a8\u6bcf\u6b21\u660e\u786e\u6388\u6743\u7684\u767b\u5f55\u3002');
   assert.equal(translate('Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.', 'zh-CN'),
-    '通行密钥将使用符合行业标准的加密方式安全保存在本设备上，仅用于您每次明确授权的登录。');
+    '\u901a\u884c\u5bc6\u94a5\u5c06\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u4ec5\u7528\u4e8e\u60a8\u6bcf\u6b21\u660e\u786e\u6388\u6743\u7684\u767b\u5f55\u3002');
   assert.equal(translate('Your passkey has been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.', 'zh-CN'),
-    '您的通行密钥已使用符合行业标准的加密方式安全保存在本设备上，仅用于您每次明确授权的登录。');
+    '\u60a8\u7684\u901a\u884c\u5bc6\u94a5\u5df2\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u4ec5\u7528\u4e8e\u60a8\u6bcf\u6b21\u660e\u786e\u6388\u6743\u7684\u767b\u5f55\u3002');
   assert.equal(translate('Your passkeys have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.', 'zh-CN'),
-    '您已保存的通行密钥均使用符合行业标准的加密方式安全保存在本设备上，仅用于您每次明确授权的登录。');
+    '\u60a8\u5df2\u4fdd\u5b58\u7684\u901a\u884c\u5bc6\u94a5\u5747\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u4ec5\u7528\u4e8e\u60a8\u6bcf\u6b21\u660e\u786e\u6388\u6743\u7684\u767b\u5f55\u3002');
   assert.equal(translate('The extension runs entirely on your device. Your account details and passkeys are securely stored locally using industry-standard encryption.', 'zh-CN'),
-    '本插件完全在本地运行。账号信息和通行密钥均使用符合行业标准的加密方式安全保存在本设备上。');
+    '\u672c\u63d2\u4ef6\u5b8c\u5168\u5728\u672c\u5730\u8fd0\u884c\u3002\u8d26\u53f7\u4fe1\u606f\u548c\u901a\u884c\u5bc6\u94a5\u5747\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\u3002');
   assert.equal(translate('Optional. Enter this PIN when Duo asks you to verify your identity.', 'zh-CN'),
-    '可按需设置。Duo 要求验证身份时，请输入此 PIN。');
+    '\u53ef\u6309\u9700\u8bbe\u7f6e\u3002Duo \u8981\u6c42\u9a8c\u8bc1\u8eab\u4efd\u65f6\uff0c\u8bf7\u8f93\u5165\u6b64 PIN\u3002');
   assert.equal(translate('If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.', 'zh-CN'),
-    '如果您选择设置验证 PIN，它将使用符合行业标准的加密方式安全保存在本设备上，并且仅用于登录验证。');
+    '\u5982\u679c\u60a8\u9009\u62e9\u8bbe\u7f6e\u9a8c\u8bc1 PIN\uff0c\u5b83\u5c06\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u5e76\u4e14\u4ec5\u7528\u4e8e\u767b\u5f55\u9a8c\u8bc1\u3002');
   assert.equal(translate('Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.', 'zh-CN'),
-    '验证 PIN 已使用符合行业标准的加密方式安全保存在本设备上，并且仅用于登录验证。');
+    '\u9a8c\u8bc1 PIN \u5df2\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u5e76\u4e14\u4ec5\u7528\u4e8e\u767b\u5f55\u9a8c\u8bc1\u3002');
   for (const message of ['Save', 'Duo & passkeys', 'Manual verification', 'Automatic verification',
     'Without a usable passkey for this account, complete Duo verification yourself.',
     "After you confirm sign-in, the assistant uses this account's saved passkey to verify with Duo automatically.",
