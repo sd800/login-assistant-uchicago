@@ -1,7 +1,6 @@
 import '../content/routes.js';
-export const { OKTA_ORIGIN, PORTAL_ORIGIN, COURSES_ORIGIN, CANVAS_LOGIN_URL, STUDENT_LOGIN_URL, isOktaLoginUrl, entryForUrl, entryTarget, isEntryTransit } = globalThis.UChiLoginRoutes;
+export const { OKTA_ORIGIN, MY_ORIGIN, PORTAL_ORIGIN, COURSES_ORIGIN, CANVAS_LOGIN_URL, STUDENT_LOGIN_URL, isOktaLoginUrl, entryForUrl, entryTarget, isEntryTransit } = globalThis.UChiLoginRoutes;
 export const CONFIRM_TEXT = "Sign in to UChicago with saved account?";
-export const PRESENCE_MS = 30_000;
 export const FLOW_MS = 5 * 60_000;
 export const PROMPT_MS = 2 * 60_000;
 export const HANDOFF_MS = 60_000;
@@ -35,7 +34,7 @@ export function parseHttps(value) {
 
 export function duoOrigin(value) {
   const url = parseHttps(value);
-  if (!/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.duosecurity\.com$/.test(url.hostname)) {
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+duosecurity\.com$/.test(url.hostname)) {
     throw new Error("Unsupported Duo address.");
   }
   return url.origin;
@@ -45,7 +44,8 @@ export function allowedRp(rpId, origin, configuredOrigin) {
   if (!configuredOrigin || origin !== configuredOrigin) return false;
   try {
     const host = new URL(duoOrigin(configuredOrigin)).hostname;
-    return rpId === host || rpId === 'duosecurity.com';
+    return typeof rpId === 'string' && (rpId === host || rpId === 'duosecurity.com' ||
+      (rpId.endsWith('.duosecurity.com') && host.endsWith('.' + rpId)));
   } catch { return false; }
 }
 
@@ -61,10 +61,10 @@ export function liveFlow(flow, now = Date.now()) {
   return flow?.status === 'active' && flow.expiresAt > now;
 }
 
-export function canUseGrant(grant, { tabId, flowId, rpId, credentialId, requireUV, now = Date.now() }) {
-  return !!grant && grant.tabId === tabId && grant.flowId === flowId &&
-    grant.rpId === rpId && grant.credentialId === credentialId &&
-    grant.issuedAt <= now && now - grant.issuedAt < PRESENCE_MS &&
+export function canUseGrant(grant, { tabId, flowId, rpId, credentialId, username, requireUV, now = Date.now() }) {
+  return !!grant && grant.tabId === tabId && grant.flowId === flowId && sameAccount(grant.username, username) &&
+    Array.isArray(grant.credentials) && grant.credentials.some(c => c.rpId === rpId && c.id === credentialId) &&
+    grant.issuedAt <= now && now < grant.expiresAt && grant.expiresAt - grant.issuedAt <= FLOW_MS &&
     (!requireUV || grant.uv === true);
 }
 
@@ -78,9 +78,34 @@ export function validateAccount(username, password) {
   return { username: username.trim(), password };
 }
 
+export function sameAccount(first, second) {
+  const normalize = value => typeof value === 'string' ? value.trim().toLowerCase().replace(/@uchicago\.edu$/, '') : '';
+  return !!normalize(first) && normalize(first) === normalize(second);
+}
+
+export function credentialsForAccount(credentials, username, selectedId = '') {
+  if (typeof username !== 'string' || !username.trim()) return [];
+  return credentials.filter(c => !c.registrationPending && !c.rejectedAt &&
+    (sameAccount(c.accountUsername || c.userName, username) || (!c.accountUsername && c.id === selectedId)));
+}
+export function credentialForAccount(credentials, username, selectedId = '') {
+  const usable = credentialsForAccount(credentials, username, selectedId);
+  return usable.find(c => c.id === selectedId) || usable
+    .sort((a, b) => (b.registrationConfirmedAt || b.createdAt || 0) - (a.registrationConfirmedAt || a.createdAt || 0))[0];
+}
+
+export function isDuoDeviceManagementUrl(value) {
+  try {
+    const url = new URL(duoOrigin(value));
+    return /(?:^|\.)devicemanagement\.duosecurity\.com$/.test(url.hostname) &&
+      /^\/frame\/device-management\/portal\/?$/.test(new URL(value).pathname);
+  } catch { return false; }
+}
+
 export function publicCredential(credential) {
   return {
     id: credential.id, rpId: credential.rpId, userName: credential.userName,
+    accountUsername: credential.accountUsername, registrationPending: credential.registrationPending === true, rejectedAt: credential.rejectedAt,
     createdAt: credential.createdAt, lastUsedAt: credential.lastUsedAt,
     discoverable: credential.discoverable
   };

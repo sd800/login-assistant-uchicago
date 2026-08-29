@@ -28,7 +28,10 @@ function initialize() {
   quietly(ready.then(() => controller.exclusive(() => controller.syncScripts())).then(() => controller.cleanup()));
   quietly(chrome.alarms.create('cleanup', { periodInMinutes: 1 }));
 }
-chrome.runtime.onInstalled.addListener(initialize);
+chrome.runtime.onInstalled.addListener(details => {
+  initialize();
+  if (details.reason === 'install') quietly(ready.then(() => chrome.runtime.openOptionsPage()));
+});
 chrome.runtime.onStartup.addListener(initialize);
 chrome.permissions.onRemoved.addListener(() => quietly(ready.then(() => controller.exclusive(async () => { await controller.invalidateAll(); await controller.syncScripts(); }))));
 chrome.permissions.onAdded.addListener(() => quietly(ready.then(() => controller.exclusive(() => controller.syncScripts()))));

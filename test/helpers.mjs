@@ -33,24 +33,57 @@ export function fixture(data = {}) {
   const windows = new Map();
   let nextWindow = 20;
   const scripts = new Map();
-  const permissions = new Set([`${DUO}/*`, `${OKTA}/*`, 'https://portal.uchicago.edu/*', 'https://courses.uchicago.edu/*']);
+  const rules = new Map(), ruleUpdates = [], reloaded = [], cookieOps = [];
+  let cookies = [];
+  const permissions = new Set([`${DUO}/*`, `${OKTA}/*`, '*://uchicago.okta.com/*', '*://*.duosecurity.com/*', 'https://portal.uchicago.edu/*', 'https://courses.uchicago.edu/*', '*://my.uchicago.edu/', '*://*.ais.uchicago.edu/*']);
   const sent = [];
   const changeListeners = new Set();
   const notify = changes => { for (const listener of changeListeners) listener(changes, 'local'); };
   const api = {
-    runtime: { id: EXTENSION_ID, getURL: path => `chrome-extension://${EXTENSION_ID}/${path}` },
-    storage: { session: storage(), local: storage({ settings: { enabled: true, duoOrigin: DUO, selectedCredentialId: data.credentials?.[0]?.id || '' } }, notify),
+    runtime: {
+      id: EXTENSION_ID, getURL: path => `chrome-extension://${EXTENSION_ID}/${path}`,
+      async getContexts(filter = {}) {
+        const contexts = [...frames].filter(([, frame]) =>
+          frame.url?.startsWith(`chrome-extension://${EXTENSION_ID}/`) &&
+          (!frame.documentLifecycle || frame.documentLifecycle === 'active'))
+          .map(([tabId, frame]) => ({ contextType: 'TAB', tabId, frameId: frame.frameId ?? 0,
+            documentId: frame.documentId, documentUrl: frame.url }));
+        return contexts.filter(context => Object.entries({ contextTypes: 'contextType', tabIds: 'tabId',
+          frameIds: 'frameId', documentIds: 'documentId' }).every(([key, field]) =>
+          !filter[key] || filter[key].includes(context[field])));
+      }
+    },
+    storage: { session: storage(), local: storage({ settings: { enabled: true, automaticLogin: true, duoOrigin: DUO, selectedCredentialId: data.credentials?.[0]?.id || '' } }, notify),
       onChanged: { addListener: listener => changeListeners.add(listener), removeListener: listener => changeListeners.delete(listener) } },
+    cookies: {
+      async getAll({ domain }) { return structuredClone(cookies.filter(c => { const host = c.domain.replace(/^\./, ''); return host === domain || host.endsWith('.' + domain); })); },
+      async get(details) { cookieOps.push({ type: 'get', details: structuredClone(details) }); const url = new URL(details.url); return structuredClone(cookies.find(c => c.name === details.name && c.storeId === details.storeId && c.path === url.pathname && (!details.partitionKey ? !c.partitionKey : JSON.stringify(c.partitionKey) === JSON.stringify(details.partitionKey)) && (url.hostname === c.domain.replace(/^\./, '') || url.hostname.endsWith('.' + c.domain.replace(/^\./, ''))))); },
+      async remove(details) { cookieOps.push({ type: 'remove', details: structuredClone(details) }); const current = await this.get(details); if (!current) return; cookies = cookies.filter(c => c !== cookies.find(x => JSON.stringify(x) === JSON.stringify(current))); return details; }
+    },
     permissions: {
       async getAll() { return { origins: [...permissions] }; },
-      async contains({ origins }) {
+      async contains({ origins = [], permissions: named = [] }) {
+        if (named.some(name => name !== 'cookies')) return false;
         return origins.every(origin => permissions.has(origin) ||
-          (permissions.has('https://*.duosecurity.com/*') && /^https:\/\/(?:[a-z0-9-]+\.)?duosecurity\.com\//.test(origin)));
+          permissions.has(origin.replace(/^https?:/, '*:').replace(/\/\*$/, '/')) ||
+          (permissions.has('https://*.duosecurity.com/*') || permissions.has('*://*.duosecurity.com/*')) && /^https:\/\/(?:[a-z0-9-]+\.)*duosecurity\.com\//.test(origin));
       },
       async remove({ origins }) { origins.forEach(origin => permissions.delete(origin)); return true; }
     },
-    webNavigation: { async getFrame({ tabId }) { return frames.get(tabId); } },
-    tabs: { async get(id) { return { id, ...frames.get(id) }; }, async sendMessage(id, message) { sent.push({ id, message }); } },
+    webNavigation: { async getFrame({ tabId }) {
+      const frame = frames.get(tabId);
+      // Chrome's webNavigation API does not expose chrome-extension documents.
+      return frame?.url?.startsWith('chrome-extension:') ? null : frame;
+    } },
+    declarativeNetRequest: {
+      async getDynamicRules({ ruleIds } = {}) { return [...rules.values()].filter(rule => !ruleIds || ruleIds.includes(rule.id)).map(rule => structuredClone(rule)); },
+      async updateDynamicRules(change) {
+        ruleUpdates.push(structuredClone(change));
+        for (const id of change.removeRuleIds || []) rules.delete(id);
+        for (const rule of change.addRules || []) rules.set(rule.id, structuredClone(rule));
+      }
+    },
+    tabs: { async reload(id) { reloaded.push(id); }, async create(options) { const id = Math.max(...frames.keys()) + 1; frames.set(id, { url: options.url, documentId: 'setup-entry-' + id }); return { id, ...options }; }, async get(id) { return { id, ...frames.get(id) }; }, async sendMessage(id, message) { sent.push({ id, message }); } },
     windows: { async create(options) { const id = nextWindow++; windows.set(id, options); return { id }; }, async remove(id) { windows.delete(id); } },
     scripting: {
       async getRegisteredContentScripts() { return [...scripts.values()]; },
@@ -61,12 +94,19 @@ export function fixture(data = {}) {
   const vault = { async read() { return structuredClone(vaultData); }, async write(value) { vaultData = structuredClone(value); } };
   const controller = new Controller(api, vault, () => now);
   return {
-    controller, api, vault, frames, windows, scripts, permissions, sent,
+    controller, api, vault, frames, windows, scripts, permissions, sent, rules, ruleUpdates, reloaded, cookieOps,
+    setCookies: values => { cookies = structuredClone(values); }, cookies: () => structuredClone(cookies),
     clock: () => now, advance: ms => { now += ms; },
     state: () => api.storage.session.data.state,
     prompt: () => Object.values(api.storage.session.data.state.prompts)[0],
     async approve(prompt, extra = {}) { return controller.dispatch({ type: 'PROMPT_DECIDE', id: prompt.id, action: 'approve', ...extra }, ui(`confirm.html?id=${prompt.id}`)); },
-    async start(extra = {}) { await controller.dispatch({ type: 'LOGIN_DETECTED' }, sender()); await this.approve(this.prompt(), extra); },
+    async start({ setup = false, ...extra } = {}) {
+      if (setup) {
+        const state = api.storage.session.data.state || { flows: {}, prompts: {}, jobs: {}, setups: {} };
+        state.setups ||= {}; state.setups[7] = now + 120_000;
+        await api.storage.session.set({ state });
+      }
+      await controller.dispatch({ type: 'LOGIN_DETECTED' }, sender()); await this.approve(this.prompt(), extra); },
     async toDuo(tabId = 7) {
       if (tabId === 7 && !this.state()?.flows?.[7]) { await this.start(); this.advance(30_000); }
       const documentId = `duo-${tabId}`; frames.set(tabId, { url: `${DUO}/frame/v4/auth`, documentId }); await controller.navigation({ tabId, frameId: 0, documentId, url: `${DUO}/frame/v4/auth`, transitionType: 'link', transitionQualifiers: ['server_redirect'] }); return sender(DUO, tabId, documentId); }

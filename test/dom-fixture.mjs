@@ -20,6 +20,19 @@ export class Element {
       this.children.push(child);
     }
   }
+  remove() {
+    const parent = this.parentElement;
+    if (parent) { const index = parent.children.indexOf(this); if (index >= 0) parent.children.splice(index, 1); }
+    this.parentElement = null;
+  }
+  insertBefore(child, reference) {
+    child.remove();
+    const index = reference ? this.children.indexOf(reference) : this.children.length;
+    if (index < 0) throw new Error('Reference node is not a child.');
+    child.parentElement = this; this.children.splice(index, 0, child); return child;
+  }
+  prepend(child) { return this.insertBefore(child, this.children[0] || null); }
+  attachShadow() { this._shadowRoot = new Element('shadow-root', {}); return this._shadowRoot; }
   get value() { return this._value; }
   set value(value) { this._value = value; }
   get textContent() { return this.children.map(c => typeof c === 'string' ? c : c.textContent).join(''); }
@@ -52,6 +65,7 @@ export class Element {
     for (let e = this; e; e = e.parentElement) if (e.hidden || e.style.display === 'none') return [];
     return [{}];
   }
+  contains(node) { return this === node || this.descendants().includes(node); }
   closest(selector) {
     for (let e = this; e; e = e.parentElement) if (selector.split(',').some(part => e.matches(part))) return e;
     return null;
@@ -63,5 +77,6 @@ export const element = (tag, attributes, ...children) => new Element(tag, attrib
 export function documentWith(...children) {
   const document = element('document', {}, element('body', {}, ...children));
   document.body = document.querySelector('body');
+  document.createElement = tag => element(tag, {});
   return document;
 }

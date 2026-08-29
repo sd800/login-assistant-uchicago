@@ -1,33 +1,38 @@
 import { $, api, status, bindText, localize, t, initializeLocale } from './ui.js';
 import { CONFIRM_TEXT } from './core/policy.js';
-const id = new URL(location.href).searchParams.get('id');
+import { PORTAL_URL } from './core/shortcut.js';
+const inline = new URL(location.href).pathname === '/start.html';
+let id = new URL(location.href).searchParams.get('id');
 let request;
 let busy = false;
 function approvalUnavailable() {
-  return !request || request.deadline <= Date.now() || (request.requireUV && !request.hasPin);
+  return !request || request.fallbackOnly || request.deadline <= Date.now() || (request.requireUV && !request.hasPin);
 }
 async function decide(action) {
   if (busy) return;
   if (action === 'approve' && (approvalUnavailable() || $('approve').disabled || !$('confirm-form').reportValidity())) return;
   busy = true;
   $('approve').disabled = true;
+  $('enroll').disabled = true;
   try {
-    await api({ type: 'PROMPT_DECIDE', id, action, pin: $('pin').value, credentialId: $('choices').value });
+    const result = await api({ type: inline ? 'SHORTCUT_DECIDE' : 'PROMPT_DECIDE', id, action, pin: $('pin').value, credentialId: request?.credentialId || $('choices').value });
     $('pin').value = '';
-    window.close();
+    if (inline && result.target) location.replace(result.target); else window.close();
   } catch (error) {
     $('pin').value = '';
+    if (inline && action === 'cancel') { location.replace(PORTAL_URL); return; }
     status($('status'), error.message, true);
     $('approve').disabled = approvalUnavailable();
-  } finally { busy = false; }
+  } finally { busy = false; $('enroll').disabled = false; }
 }
 function cancelRequest() {
   if (busy) return;
-  if (!request || request.deadline <= Date.now()) { window.close(); return; }
+  if (!inline && (!request || request.deadline <= Date.now())) { window.close(); return; }
   return decide('cancel');
 }
 $('confirm-form').addEventListener('submit', event => { event.preventDefault(); if (event.isTrusted) return decide('approve'); });
 $('cancel').addEventListener('click', event => { if (event.isTrusted) return cancelRequest(); });
+$('enroll').addEventListener('click', event => { if (event.isTrusted && request?.allowEnrollment) return decide('enroll'); });
 $('fallback').addEventListener('click', event => { if (event.isTrusted) return decide('fallback'); });
 document.addEventListener('keydown', event => {
   // Leave IME composition and browser/assistive-technology shortcuts untouched.
@@ -47,13 +52,20 @@ document.addEventListener('keydown', event => {
 });
 try { await initializeLocale(); } catch { status($('status'), 'Unable to load the saved language. Reload this page to try again.', true); }
 try {
-  request = await api({ type: 'PROMPT_GET', id });
-  bindText($('title'), request.kind === 'login' ? CONFIRM_TEXT : request.kind === 'create' ? "Save a new Duo passkey?" : "Use a saved Duo passkey?");
-  bindText($('approve'), 'Confirm');
+  request = await api({ type: inline ? 'SHORTCUT_OPEN' : 'PROMPT_GET', id });
+  if (inline && request.target) { location.replace(request.target); } else {
+  id = request.id || id;
+  bindText($('title'), request.kind === 'setup' ? "Add a passkey for one-click sign-in?" : request.kind === 'repair' ? "Add a replacement passkey?" : request.fallbackOnly ? "Passkey unavailable" : request.kind === 'login' ? CONFIRM_TEXT : request.kind === 'create' ? "Add a passkey" : request.credentialId && request.requireUV ? "Verify your identity" : "Use a saved Duo passkey?");
+  if (request.kind === 'login') {
+    $('sign-in-explanation').hidden = false;
+    bindText($('sign-in-explanation'), "Confirm to log in to uchicago.edu.");
+  }
+  if (request.kind === 'create') bindText($('approve'), 'Continue');
+  else bindText($('approve'), 'Confirm');
   $('details').hidden = false;
   localize($('username'), () => request.username || request.choices?.[0]?.userName || t("UChicago account"));
   if (request.rpId && request.kind !== 'login') { $('rp-label').hidden = false; $('rp').hidden = false; $('rp').textContent = request.rpId; }
-  if (request.choices?.length) {
+  if (request.choices?.length && !request.credentialId) {
     $('choices-field').hidden = false;
     for (const credential of request.choices) {
       const option = document.createElement('option');
@@ -62,17 +74,37 @@ try {
       $('choices').append(option);
     }
   }
-  $('pin-field').hidden = !request.hasPin;
+  $('approve').hidden = request.fallbackOnly === true;
+  $('enroll').hidden = !request.allowEnrollment || request.kind === 'repair';
+  $('pin-field').hidden = ['setup', 'repair'].includes(request.kind) || !request.hasPin || request.fallbackOnly === true || (request.kind === 'login' && request.automaticDuo === false);
   if (request.requireUV) { bindText($('pin-label'), "Verification PIN"); $('pin').required = true; }
-  if (request.requireUV && !request.hasPin) {
+  if (request.notice) {
+    $('notice').hidden = false;
+    bindText($('notice'), request.notice);
+  } else if (request.requireUV && !request.hasPin) {
     $('notice').hidden = false;
     bindText($('notice'), "Duo requires identity verification. Use another passkey provider, or set a verification PIN in settings and try again.");
+  } else if (request.kind === 'setup') {
+    $('notice').hidden = false;
+    bindText($('notice'), "The assistant will sign in with your saved account and help you add a Duo passkey. If Duo asks you to verify your identity, complete that step to continue.");
   } else if (request.kind === 'create') {
     $('notice').hidden = false;
-    bindText($('notice'), "The passkey will be saved here. Wait for Duo to confirm registration, and keep another verification method.");
+    bindText($('notice'), "The passkey will be saved here. Adding a passkey is necessary for the one-click account sign-in feature.");
   }
-  bindText($('consent-help'), request.kind === 'login' ? "Your confirmation applies to this sign-in. A matching passkey can use it once within 30 seconds. Duo may ask for further verification." : "Confirming allows this page to complete this passkey request once.");
-  $('fallback').hidden = request.kind === 'login';
+  bindText($('consent-help'), request.kind === 'login' ? "Your confirmation covers automatic passkey verification for this sign-in in this tab." : request.kind === 'create' ? "Confirming allows this page to complete this passkey request." : "Confirming allows this page to complete this passkey request once.");
+  if (request.kind === 'login' && request.automaticDuo === false) bindText($('consent-help'), "The assistant will fill your saved account on Okta. Complete Duo verification yourself if asked.");
+  if (request.fallbackOnly) {
+    bindText($('consent-help'), "Choose how to continue. Adding a new passkey keeps your existing local keys.");
+    bindText($('keyboard-help'), "Esc to cancel. Use Tab to choose an action.");
+  }
+  if (['setup', 'repair'].includes(request.kind)) bindText($('consent-help'), "Confirm to start passkey setup. Existing local passkeys will be kept.");
+  if (request.kind === 'create') bindText($('keyboard-help'), "Enter / Space to continue; Esc to cancel. Focused controls keep their usual keys.");
+  $('fallback').hidden = ['login', 'repair', 'setup'].includes(request.kind);
   $('approve').disabled = approvalUnavailable();
-  setInterval(() => { if (Date.now() >= request.deadline) { $('approve').disabled = true; status($('status'), "This request has expired. Close this window and try again on the sign-in page.", true); } }, 1000);
-} catch (error) { bindText($('title'), "Request expired"); status($('status'), error.message, true); }
+  setInterval(() => { if (Date.now() >= request.deadline) { $('approve').disabled = true; status($('status'), inline ? "This request has expired. Reload this page to try again." : "This request has expired. Close this window and try again on the sign-in page.", true); } }, 1000);
+  }
+} catch (error) {
+  const expired = error.message === "This confirmation has expired. Return to the sign-in page and try again.";
+  bindText($('title'), expired ? "Request expired" : "Unable to load confirmation");
+  status($('status'), error.message, true);
+}

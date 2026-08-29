@@ -4,6 +4,8 @@ export const LOCALE = 'en-US';
 export const LANGUAGE_KEY = 'uiLanguage';
 export const SUPPORTED_LOCALES = Object.freeze([LOCALE, 'zh-CN']);
 export const normalizeLocale = value => SUPPORTED_LOCALES.includes(value) ? value : LOCALE;
+export const resolveLocale = (value, uiLanguage = LOCALE) => SUPPORTED_LOCALES.includes(value) ? value :
+  typeof uiLanguage === 'string' && /^zh(?:[-_]|$)/i.test(uiLanguage.trim()) ? 'zh-CN' : LOCALE;
 
 // English phrases are stable lookup keys; unknown browser errors stay intact.
 export function translate(message, locale = LOCALE, params = {}) {
@@ -32,7 +34,7 @@ export function formatPasskeyCount(count, locale = LOCALE) {
 
 // Injectable storage keeps language independent of the vault and sign-in state.
 export function createLanguagePreference(storage, changes, uiLanguage = LOCALE) {
-  const defaultLocale = typeof uiLanguage === 'string' && /^zh(?:[-_]|$)/i.test(uiLanguage.trim()) ? 'zh-CN' : LOCALE;
+  const defaultLocale = resolveLocale(null, uiLanguage);
   let locale = defaultLocale;
   let revision = 0;
   let listening = false;

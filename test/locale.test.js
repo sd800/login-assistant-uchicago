@@ -374,17 +374,21 @@ test('settings labels and privacy help are localized and the popup stays compact
   assert.doesNotMatch(popup, /Stored on this device|Independent project/);
   assert.equal(Object.hasOwn(chinese, 'Stored on this device · Independent project'), false);
   assert.match(settings, /id="save-account"[^>]*>Save<\/button>/);
-  assert.match(settings, /id="save"[^>]*>Save<\/button>/);
+  assert.doesNotMatch(settings, /selected-credential|Ask each time/);
   assert.equal(translate("Local data", 'zh-CN'), "\u672c\u5730\u6570\u636e");
-  assert.equal(translate("Delete local account data", 'zh-CN'), "\u6e05\u9664\u672c\u5730\u6570\u636e");
+  assert.equal(translate("Delete local data", 'zh-CN'), "\u6e05\u9664\u672c\u5730\u6570\u636e");
   assert.equal(translate("Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.", 'zh-CN'), "\u672c\u63d2\u4ef6\u4e3a\u72ec\u7acb\u9879\u76ee\uff0c\u4e0e\u829d\u52a0\u54e5\u5927\u5b66\u3001Okta\u3001Duo Security \u53ca\u5176\u4ed6\u4efb\u4f55\u673a\u6784\u5747\u65e0\u96b6\u5c5e\u5173\u7cfb\uff0c\u4e5f\u672a\u83b7\u5f97\u8fd9\u4e9b\u673a\u6784\u7684\u8d5e\u52a9\u6216\u80cc\u4e66\u3002");
   assert.equal(translate("Account and password saved", 'zh-CN'), "\u8d26\u53f7\u5bc6\u7801\u5df2\u4fdd\u5b58");
   assert.equal(translate("Passkey saved", 'zh-CN'), "\u901a\u884c\u5bc6\u94a5\u5df2\u4fdd\u5b58");
-  assert.match(settings, /id="clear"[^>]*>Delete local account data<\/button>/);
+  assert.match(settings, /id="clear"[^>]*>Delete local data<\/button>/);
   assert.match(settings, /Uninstalling the extension deletes all data it has saved\./);
   assert.match(settings, /<details class="disclosure" id="privacy-notice">/);
   assert.equal(translate("Privacy", "zh-CN"), "\u9690\u79c1\u8bf4\u660e");
-  for (const message of ['Save', 'Duo & passkeys', 'Opening the student sign-in.', 'Opening the Canvas sign-in.', 'The sign-in link has changed. The assistant has stopped.']) {
+  assert.equal(translate('Confirm to log in to uchicago.edu.', 'zh-CN'), '\u786e\u8ba4\u4ee5\u767b\u5f55 uchicago.edu');
+  for (const message of ['Save', 'Duo & passkeys', 'Manual verification', 'Automatic verification',
+    'Without a usable passkey for this account, complete Duo verification yourself.',
+    "After you confirm sign-in, the assistant uses this account's saved passkey to verify with Duo automatically.",
+    'Opening the student sign-in.', 'Opening the Canvas sign-in.', 'The sign-in link has changed. The assistant has stopped.']) {
     assert.notEqual(translate(message, 'zh-CN'), message);
   }
 });

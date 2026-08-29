@@ -17,6 +17,9 @@ async function walk(path) {
   return result;
 }
 const files = await walk(extension);
+const catalogSource = await readFile(join(extension, 'locales/zh-CN.js'), 'utf8');
+const catalogKeys = [...catalogSource.matchAll(/^\s*"([^"]+)":/gm)].map(match => match[1]);
+assert.equal(new Set(catalogKeys).size, catalogKeys.length, 'Duplicate Chinese localization keys.');
 const manifest = JSON.parse(await readFile(join(extension, 'manifest.json'), 'utf8'));
 const packageInfo = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
 assert.equal(packageInfo.version, manifest.version, 'Package and extension versions must agree.');
@@ -35,10 +38,14 @@ if (changelogs.size === 2) {
     'Changelog versions or dates differ between languages.');
 }
 assert.equal(manifest.manifest_version, 3);
-assert.deepEqual(manifest.host_permissions, ['https://uchicago.okta.com/*', 'https://*.duosecurity.com/*', 'https://portal.uchicago.edu/*', 'https://courses.uchicago.edu/*']);
+assert.deepEqual(manifest.host_permissions, ['*://uchicago.okta.com/*', '*://*.duosecurity.com/*', 'https://portal.uchicago.edu/*', 'https://courses.uchicago.edu/*', '*://*.ais.uchicago.edu/*', '*://my.uchicago.edu/']);
 assert.deepEqual(manifest.optional_host_permissions ?? [], []);
-assert.ok(!manifest.permissions.some(x => ['debugger', 'cookies', 'nativeMessaging', 'management'].includes(x)));
-assert.ok(!manifest.externally_connectable && !manifest.web_accessible_resources);
+assert.ok(!manifest.permissions.some(x => ['debugger', 'browsingData', 'nativeMessaging', 'management'].includes(x)));
+assert.ok(manifest.permissions.includes('cookies'));
+assert.ok(!manifest.externally_connectable);
+assert.deepEqual(manifest.web_accessible_resources, [{ resources: ['start.html'], matches: ['<all_urls>'] }]);
+assert.equal(manifest.incognito, 'split');
+assert.ok(manifest.permissions.includes('declarativeNetRequestWithHostAccess'));
 for (const file of [manifest.background.service_worker, manifest.options_page, manifest.action.default_popup, ...manifest.content_scripts.flatMap(s => s.js)]) {
   assert.ok(files.includes(join(extension, file)), `Missing manifest asset: ${file}`);
 }

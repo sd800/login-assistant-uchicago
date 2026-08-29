@@ -93,6 +93,12 @@ test('status and action icons share a width while preserving SVG proportions', a
 });
 
 
+test('saved passkey account and current-account label share centered line metrics', () => {
+  assert.match(css, /\.credential-title\s*\{[^}]*align-items:center;/);
+  assert.match(css, /\.credential-account\s*\{[^}]*line-height:1\.5;/);
+  assert.match(css, /\.credential \.credential-label\s*\{[^}]*align-items:center;[^}]*line-height:1\.5;/);
+});
+
 test('all interface pages use nonnegative language-specific tracking, including controls', async () => {
   assert.match(css, /:lang\(zh\)\s*\{\s*letter-spacing:\s*0\.04em;\s*\}/);
   assert.match(css, /:lang\(en\)\s*\{\s*letter-spacing:\s*normal;\s*\}/);

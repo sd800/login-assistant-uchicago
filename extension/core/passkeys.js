@@ -1,8 +1,10 @@
-import { allowedRp } from './policy.js';
+import { allowedRp, parseHttps } from './policy.js';
 import { b64, unb64, utf8, sha256, concat, cbor, uint32, randomId, derSignature } from './encoding.js';
 
 export class PasskeyError extends Error {
-  constructor(name, message) { super(message); this.name = name; }
+  constructor(name, message, reason = '', features = []) {
+    super(message); this.name = name; this.reason = reason; this.features = features;
+  }
 }
 export function checkRequest(kind, options, origin, configuredOrigin) {
   if (!options || typeof options !== 'object') throw new PasskeyError('TypeError', "Missing WebAuthn request options.");
@@ -11,12 +13,31 @@ export function checkRequest(kind, options, origin, configuredOrigin) {
   unb64(options.challenge, { min: 16, max: 1024 });
   const uv = kind === 'create' ? options.authenticatorSelection?.userVerification : options.userVerification;
   if (uv && !['required', 'preferred', 'discouraged'].includes(uv)) throw new PasskeyError('TypeError', "Unrecognized user verification requirement.");
-  if (options.attestation === 'enterprise' || options.authenticatorSelection?.authenticatorAttachment === 'platform') {
-    throw new PasskeyError('NotSupportedError', "This request needs a different authenticator. Use another passkey provider.");
+  if (options.attestation === 'enterprise') {
+    throw new PasskeyError('NotSupportedError', "This request needs a different authenticator. Use another passkey provider.", 'enterprise');
+  }
+  if (options.authenticatorSelection?.authenticatorAttachment === 'platform') {
+    throw new PasskeyError('NotSupportedError', "This request needs a different authenticator. Use another passkey provider.", 'platform');
   }
   const extensions = options.extensions || {};
-  if (Object.keys(extensions).some(key => !['credProps'].includes(key))) {
-    throw new PasskeyError('NotSupportedError', "This request uses unsupported WebAuthn features. Use another passkey provider.");
+  const supported = ['credProps', kind === 'get' ? 'appid' : 'appidExclude'];
+  const unsupported = Object.keys(extensions).filter(key => !supported.includes(key));
+  if (unsupported.length) {
+    // Only standard feature names may enter activity records, never page-supplied names or values.
+    const known = ['appid', 'appidExclude', 'credentialProtectionPolicy', 'enforceCredentialProtectionPolicy',
+      'credProtect', 'credBlob', 'getCredBlob', 'hmacCreateSecret', 'hmacGetSecret', 'largeBlob',
+      'minPinLength', 'prf', 'uvm', 'devicePubKey', 'payment'];
+    const features = unsupported.every(key => known.includes(key)) ? unsupported.sort() : [];
+    throw new PasskeyError('NotSupportedError', "This request uses unsupported WebAuthn features. Use another passkey provider.", 'extensions', features);
+  }
+  const legacyAppId = extensions[kind === 'get' ? 'appid' : 'appidExclude'];
+  if (legacyAppId !== undefined) {
+    // Accept Duo's same-site legacy hint, but keep every local credential bound to its WebAuthn RP ID.
+    let app;
+    try { app = typeof legacyAppId === 'string' && parseHttps(legacyAppId); } catch { /* Invalid AppID. */ }
+    if (!app || !(app.hostname === 'duosecurity.com' || app.hostname.endsWith('.duosecurity.com'))) {
+      throw new PasskeyError('SecurityError', "The legacy security key address does not belong to Duo.");
+    }
   }
   const list = kind === 'create' ? options.excludeCredentials : options.allowCredentials;
   if (list !== undefined) {
@@ -28,7 +49,7 @@ export function checkRequest(kind, options, origin, configuredOrigin) {
   }
   if (kind === 'create') {
     if (!options.pubKeyCredParams?.some(x => x.type === 'public-key' && x.alg === -7)) {
-      throw new PasskeyError('NotSupportedError', "This provider supports only ES256 (P-256) credentials.");
+      throw new PasskeyError('NotSupportedError', "This provider supports only ES256 (P-256) credentials.", 'algorithm');
     }
     unb64(options.user?.id, { min: 1, max: 64 });
     if (typeof options.user?.name !== 'string' || !options.user.name || options.user.name.length > 254) {
@@ -73,7 +94,10 @@ export async function createCredential({ options, origin, configuredOrigin, cred
       attestationObject: b64(cbor(new Map([['fmt', 'none'], ['attStmt', new Map()], ['authData', authData]]))),
       authenticatorData: b64(authData), publicKey: b64(spki), publicKeyAlgorithm: -7, transports: []
     },
-    clientExtensionResults: options.extensions?.credProps ? { credProps: { rk: discoverable } } : {}
+    clientExtensionResults: {
+      ...(options.extensions?.credProps ? { credProps: { rk: discoverable } } : {}),
+      ...(options.extensions?.appidExclude !== undefined ? { appidExclude: true } : {})
+    }
   };
   return { credential, response };
 }
@@ -93,7 +117,7 @@ export async function getAssertion({ options, origin, configuredOrigin, credenti
     response: {
       id: credential.id, rawId: credential.id, type: 'public-key', authenticatorAttachment: 'cross-platform',
       response: { clientDataJSON: b64(data), authenticatorData: b64(authData), signature: b64(derSignature(signature)), userHandle: credential.userId },
-      clientExtensionResults: {}
+      clientExtensionResults: options.extensions?.appid !== undefined ? { appid: false } : {}
     }
   };
 }

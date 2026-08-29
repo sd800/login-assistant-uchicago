@@ -108,3 +108,22 @@ test('PIN verifies only the supplied correct value and is salted', async () => {
   assert.equal(await verifyPin('', pin), false);
   await assert.rejects(newPin('123'));
 });
+
+test('Duo AppID hints keep WebAuthn RP hashing, signatures, and exclusions intact', async () => {
+  const appid = DUO + '/legacy/app-id';
+  const options = creation({ extensions: { credProps: true, appidExclude: appid } });
+  const { credential, response } = await make(options);
+  assert.deepEqual(response.clientExtensionResults, { credProps: { rk: true }, appidExclude: true });
+  await assert.rejects(createCredential({ options: { ...options, excludeCredentials: [{ type: 'public-key', id: credential.id }] },
+    origin: DUO, configuredOrigin: DUO, credentials: [credential], proof: { up: true } }), { name: 'InvalidStateError' });
+  const signed = await getAssertion({ options: assertion(credential, { extensions: { appid } }),
+    origin: DUO, configuredOrigin: DUO, credential, proof: { up: true, uv: false } });
+  const auth = unb64(signed.response.response.authenticatorData);
+  assert.deepEqual(auth.slice(0, 32), await sha256(utf8(credential.rpId)));
+  assert.deepEqual(signed.response.clientExtensionResults, { appid: false });
+  const message = concat(auth, await sha256(unb64(signed.response.response.clientDataJSON)));
+  assert.equal(verify('sha256', message, createPublicKey({ key: credential.publicKey, format: 'jwk' }), unb64(signed.response.response.signature)), true);
+  for (const invalid of ['http://duosecurity.com/app', 'https://duosecurity.com.evil.test/app', 'https://evilduosecurity.com/app', 'https://user@duosecurity.com/app', false]) {
+    assert.throws(() => checkRequest('get', assertion(credential, { extensions: { appid: invalid } }), DUO, DUO), { name: 'SecurityError' });
+  }
+});

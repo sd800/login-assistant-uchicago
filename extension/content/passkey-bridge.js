@@ -1,7 +1,11 @@
 (() => {
   'use strict';
   if (window.top !== window || !location.hostname.endsWith('.duosecurity.com') || !navigator.credentials) return;
-  const native = { create: navigator.credentials.create.bind(navigator.credentials), get: navigator.credentials.get.bind(navigator.credentials) };
+  const installed = Symbol.for('uchicago.passkey.bridge');
+  if (navigator.credentials.get[installed]) return;
+  const container = navigator.credentials;
+  const original = { create: container.create, get: container.get };
+  const native = { create: original.create.bind(container), get: original.get.bind(container) };
   const pending = new Map();
   function encode(value) {
     if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) {
@@ -50,9 +54,9 @@
   });
   async function handle(kind, options) {
     if (!options?.publicKey) return native[kind](options);
-    // Conditional / silent mediation needs browser-owned autofill UI that this
-    // provider does not implement. Preserve it without opening a popup.
-    if (options.mediation && !['optional', 'required'].includes(options.mediation)) return native[kind](options);
+    // Even browser-managed requests wait for the isolated adapter to decide
+    // whether this is a default method being replaced in an approved sign-in.
+    const browserManaged = !!options.mediation && !['optional', 'required'].includes(options.mediation);
     if (options.signal?.aborted) throw new DOMException("Authentication canceled.", 'AbortError');
     const id = crypto.randomUUID();
     let timer;
@@ -66,7 +70,7 @@
         timer = setTimeout(() => { cancel(); reject(new DOMException("Authentication timed out. Try again or use another passkey provider.", 'NotAllowedError')); }, timeout);
         abort = () => { cancel(); reject(new DOMException("Authentication canceled.", 'AbortError')); };
         options.signal?.addEventListener('abort', abort, { once: true });
-        window.postMessage({ channel: 'uchicago-passkeys-v1', direction: 'request', id, kind, options: encode(options.publicKey) }, location.origin);
+        window.postMessage({ channel: 'uchicago-passkeys-v1', direction: 'request', id, kind, browserManaged, options: encode(options.publicKey) }, location.origin);
       });
     } finally {
       pending.delete(id);
@@ -77,8 +81,22 @@
     if (result.fallback) return native[kind](options);
     if (result.error) throw new DOMException(result.error.message, result.error.name);
     if (!result.response) throw new DOMException("The passkey provider returned an invalid response.", 'UnknownError');
-    return credential(result.response, kind);
+    const value = credential(result.response, kind);
+    if (kind === 'get') window.postMessage({ channel: 'uchicago-passkeys-v1', direction: 'delivered', id }, location.origin);
+    return value;
   }
-  navigator.credentials.create = options => handle('create', options);
-  navigator.credentials.get = options => handle('get', options);
+  for (const kind of ['create', 'get']) {
+    const wrapped = function(options) {
+      if (this !== container) return Reflect.apply(original[kind], this, [options]);
+      return handle(kind, options);
+    };
+    Object.defineProperty(wrapped, installed, { value: true });
+    // Cover both navigator.credentials.get() and prototype-based calls cached
+    // by a page after document_start. Keep normal receiver validation.
+    if (typeof CredentialsContainer === 'function') {
+      const descriptor = Object.getOwnPropertyDescriptor(CredentialsContainer.prototype, kind);
+      if (descriptor?.configurable) Object.defineProperty(CredentialsContainer.prototype, kind, { ...descriptor, value: wrapped });
+    }
+    Object.defineProperty(container, kind, { configurable: true, writable: true, value: wrapped });
+  }
 })();

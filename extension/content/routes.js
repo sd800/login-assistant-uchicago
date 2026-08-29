@@ -3,6 +3,7 @@
   // Shared by isolated content scripts and the trusted service worker.
   const OKTA_ORIGIN = 'https://uchicago.okta.com';
   const PORTAL_ORIGIN = 'https://portal.uchicago.edu';
+  const MY_ORIGIN = 'https://my.uchicago.edu';
   const COURSES_ORIGIN = 'https://courses.uchicago.edu';
   const CANVAS_LOGIN_URL = 'https://canvas.uchicago.edu/login/1';
   const STUDENT_LOGIN_URL = 'https://ais92hbprd.ais.uchicago.edu/psc/hbprd/EMPLOYEE/EMPL/s/WEBLIB_REDIRECT.ISCRIPT2.FieldFormula.IScript_redirect';
@@ -22,12 +23,13 @@
   }
   function entryForUrl(value) {
     const url = https(value);
+    if (url?.origin === MY_ORIGIN && url.pathname === '/') return 'myuchicago';
     if (url?.origin === PORTAL_ORIGIN && /^\/ais\/?$/.test(url.pathname)) return 'portal';
     if (url?.origin === COURSES_ORIGIN && url.pathname === '/') return 'courses';
     return null;
   }
   function entryTarget(kind) {
-    return kind === 'portal' ? STUDENT_LOGIN_URL : kind === 'courses' ? CANVAS_LOGIN_URL : null;
+    return ['portal', 'myuchicago'].includes(kind) ? STUDENT_LOGIN_URL : kind === 'courses' ? CANVAS_LOGIN_URL : null;
   }
   function isEntryTransit(kind, value) {
     const url = https(value);
@@ -37,7 +39,7 @@
     return url.origin === expected.origin && url.pathname === expected.pathname;
   }
   globalThis.UChiLoginRoutes = Object.freeze({
-    OKTA_ORIGIN, PORTAL_ORIGIN, COURSES_ORIGIN, CANVAS_LOGIN_URL, STUDENT_LOGIN_URL,
+    OKTA_ORIGIN, MY_ORIGIN, PORTAL_ORIGIN, COURSES_ORIGIN, CANVAS_LOGIN_URL, STUDENT_LOGIN_URL,
     isOktaLoginUrl, entryForUrl, entryTarget, isEntryTransit
   });
 })();

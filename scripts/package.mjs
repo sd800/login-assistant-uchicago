@@ -14,6 +14,7 @@ const staging = join(dist, label);
 const packaged = [];
 async function copyTree(relative) {
   for (const item of await readdir(join(root, relative), { withFileTypes: true })) {
+    if (item.name === '.DS_Store') continue;
     if (item.isSymbolicLink()) throw new Error('Package may not include symlinks');
     const path = join(relative, item.name);
     if (item.isDirectory()) await copyTree(path);
