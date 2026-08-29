@@ -116,6 +116,8 @@ input[type=radio] { accent-color:var(--wine); width:16px; height:16px; margin:0;
 .duo-mode svg,.credential-lock svg { display:block; width:18px; height:18px; }
 .credential-account { display:inline-flex; align-items:center; gap:6px; min-width:0; line-height:1.5; }
 .credential-lock { display:inline-flex; color:var(--muted); flex-shrink:0; }
+.secure-help { display:flex; align-items:flex-start; gap:7px; }
+.secure-help-lock { margin-top:1px; }
 .passkey-actions { justify-content:flex-start; margin-top:18px; }
 .passkeys-heading { margin:25px 0 12px; font-size:12px; font-weight:500; color:var(--muted); }
 .credential-state { font-size:11px; font-weight:400; padding:1px 6px; border:1px solid var(--line); border-radius:4px; }

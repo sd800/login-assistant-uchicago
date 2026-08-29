@@ -1,7 +1,33 @@
 import { $, api, status, date, t, bindText, localize, initializeLocale, getLocale, setLocale } from './ui.js';
 let snapshot;
+const PASSWORD_WILL_BE_SAVED = "Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
+const PASSWORD_HAS_BEEN_SAVED = "Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
+const PASSKEYS_WILL_BE_SAVED = "Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
+const PASSKEY_HAS_BEEN_SAVED = "Your passkey has been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
+const PASSKEYS_HAVE_BEEN_SAVED = "Your passkeys have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
+const PIN_WILL_BE_SAVED = "If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.";
+const PIN_HAS_BEEN_SAVED = "Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.";
+function passwordIsSaved() {
+  return !!snapshot?.hasPassword && $('username').value.trim() === snapshot.username;
+}
+function showPasswordStorage() {
+  localize($('password-help-text'), () => t(passwordIsSaved() ? PASSWORD_HAS_BEEN_SAVED : PASSWORD_WILL_BE_SAVED));
+  $('password-help').hidden = false;
+}
+function showPasskeyStorage() {
+  const count = snapshot?.credentials?.length || 0;
+  const message = count === 0 ? PASSKEYS_WILL_BE_SAVED : count === 1 ? PASSKEY_HAS_BEEN_SAVED : PASSKEYS_HAVE_BEEN_SAVED;
+  localize($('passkey-storage-help'), () => t(message));
+  $('passkey-storage-help').hidden = false;
+}
+function showPinStorage() {
+  if (!snapshot) return;
+  localize($('pin-storage-help-text'), () => t(snapshot.hasPin ? PIN_HAS_BEEN_SAVED : PIN_WILL_BE_SAVED));
+  $('pin-storage-help').hidden = false;
+}
 function passwordRequirement() {
-  $('password').required = !snapshot?.hasPassword || $('username').value.trim() !== snapshot.username;
+  $('password').required = !passwordIsSaved();
+  showPasswordStorage();
 }
 function disable(ids, value) { for (const id of ids) $(id).disabled = value; }
 function showDuoMode() {
@@ -26,8 +52,10 @@ async function load({ account = false, pin = false } = {}) {
   if (pin) { $('old-pin').value = ''; $('new-pin').value = ''; }
   $('old-pin-field').hidden = !snapshot.hasPin;
   $('old-pin').required = snapshot.hasPin;
+  if ($('pin-settings').open) showPinStorage();
   showDuoMode();
   $('credentials').replaceChildren();
+  showPasskeyStorage();
   if (!snapshot.credentials.length) {
     const empty = document.createElement('li'); empty.className = 'help';
     bindText(empty, "No saved passkeys."); $('credentials').append(empty);
@@ -81,6 +109,9 @@ async function load({ account = false, pin = false } = {}) {
   if (!snapshot.history.length) { const li = document.createElement('li'); bindText(li, "No activity yet."); $('history').append(li); }
 }
 $('username').addEventListener('input', passwordRequirement);
+$('pin-settings').addEventListener('toggle', () => {
+  if ($('pin-settings').open) showPinStorage();
+});
 $('language').addEventListener('change', async event => {
   if (!event.isTrusted) return;
   const selected = $('language').value;

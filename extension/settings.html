@@ -37,7 +37,10 @@
           <div class="field">
             <label for="password" data-i18n>Password</label>
             <input id="password" type="password" autocomplete="new-password" maxlength="1024" aria-describedby="password-help">
-            <p class="help" id="password-help" data-i18n>Encrypted on this device and used for sign-in only after you confirm each attempt.</p>
+            <p class="help secure-help" id="password-help" hidden>
+              <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
+              <span id="password-help-text" data-i18n>Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.</span>
+            </p>
           </div>
           <div class="actions"><button class="primary" id="save-account" type="submit" data-i18n>Save</button></div>
           <p class="status" id="account-status" role="status" aria-live="polite"></p>
@@ -53,6 +56,7 @@
         <p class="status" id="duo-status" role="status" aria-live="polite"></p>
         <h3 class="passkeys-heading" id="passkeys-heading" data-i18n>Saved passkeys</h3>
         <ul class="credentials" id="credentials" aria-labelledby="passkeys-heading"><li class="help" data-i18n>Loading passkeys…</li></ul>
+        <p class="help" id="passkey-storage-help" hidden data-i18n>Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.</p>
         <p class="help" data-i18n>Local passkeys are never deleted automatically. Delete them here when you no longer need them.</p>
         <p class="status" id="credentials-status" role="status" aria-live="polite"></p>
         <div id="passkey-setup" hidden>
@@ -63,7 +67,7 @@
       <details class="disclosure" id="pin-settings">
         <summary data-i18n>Verification PIN</summary>
         <div class="disclosure-body">
-          <p class="help" data-i18n>Optional. Enter this PIN when Duo asks you to verify your identity. It does not lock your saved data.</p>
+          <p class="help" data-i18n>Optional. Enter this PIN when Duo asks you to verify your identity.</p>
           <form id="pin-form">
             <div class="field" id="old-pin-field" hidden>
               <label for="old-pin" data-i18n>Current verification PIN</label>
@@ -71,8 +75,12 @@
             </div>
             <div class="field">
               <label for="new-pin" data-i18n>New verification PIN</label>
-              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" aria-describedby="pin-help">
+              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" aria-describedby="pin-help pin-storage-help">
               <p class="help" id="pin-help" data-i18n>6–128 characters. To remove a PIN, enter the current PIN and leave this blank.</p>
+              <p class="help secure-help" id="pin-storage-help" hidden>
+                <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
+                <span id="pin-storage-help-text"></span>
+              </p>
             </div>
             <div class="actions"><button type="submit" data-i18n>Update PIN</button></div>
             <p class="status" id="pin-status" role="status" aria-live="polite"></p>
@@ -92,7 +100,7 @@
           <li data-i18n>Next time, open the school service you want to use and confirm the sign-in prompt. If you skip passkey setup, complete Duo verification yourself.</li>
         </ol>
         <p class="help" data-i18n>Keep another Duo verification method.</p>
-        <p class="notice" data-i18n>The extension runs entirely on your device; account details and passkeys are encrypted locally.</p>
+        <p class="notice" data-i18n>The extension runs entirely on your device. Your account details and passkeys are securely stored locally using industry-standard encryption.</p>
       </section>
       <details class="disclosure">
         <summary data-i18n>Recent activity</summary>
@@ -130,7 +138,7 @@
   </div>
   <footer class="footer">
     <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
-    <p class="version" data-i18n>Version 1.6.10</p>
+    <p class="version" data-i18n>Version 1.6.13</p>
     <p lang="en-US" translate="no">© 2026 Songming.org</p>
   </footer>
 </main>

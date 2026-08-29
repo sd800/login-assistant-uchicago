@@ -93,6 +93,16 @@ test('status and action icons share a width while preserving SVG proportions', a
 });
 
 
+test('the password and PIN storage locks align with their explanatory text', async () => {
+  const html = await readFile(new URL('../extension/settings.html', import.meta.url), 'utf8');
+  assert.match(html, /id="password-help"[^>]*hidden/);
+  assert.match(html, /class="credential-lock secure-help-lock" aria-hidden="true"/);
+  assert.match(html, /id="pin-storage-help"[^>]*hidden/);
+  assert.ok(html.indexOf('id="pin-storage-help"') < html.indexOf('id="pin-storage-help-text"'));
+  assert.match(html, /id="pin-storage-help-text"><\/span>/);
+  assert.match(css, /\.secure-help\s*\{[^}]*display:flex;[^}]*align-items:flex-start;/);
+});
+
 test('saved passkey account and current-account label share centered line metrics', () => {
   assert.match(css, /\.credential-title\s*\{[^}]*align-items:center;/);
   assert.match(css, /\.credential-account\s*\{[^}]*line-height:1\.5;/);

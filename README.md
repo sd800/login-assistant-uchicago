@@ -11,7 +11,7 @@ After you confirm the sign-in prompt, the assistant enters your saved credential
 - Stores account details and newly registered passkeys in your Chrome profile.
 - Includes English and Simplified Chinese interfaces with automatic light and dark appearance.
 
-Current version: 1.6.10
+Current version: 1.6.13
 
 Release date: August 29, 2026
 
@@ -85,13 +85,13 @@ If a request is incompatible, choose **Use another passkey provider** when offer
 
 Your initial confirmation covers the current sign-in in that tab for up to five minutes. With a usable saved passkey, the assistant chooses a usable passkey for your saved account without another passkey confirmation. Redirects do not restart the timer. A missing or invalid key, an unsupported request, or a required verification PIN may need your attention. A new sign-in needs a new confirmation.
 
-When Duo requires identity verification, the extension checks the **Verification PIN** entered for that attempt, or lets you use another provider. You can set this optional PIN in settings using 6–128 characters. It is separate from your school password and device PIN, and does not lock the local vault. Five incorrect attempts pause PIN checks for five minutes.
+When Duo requires identity verification, the extension checks the **Verification PIN** entered for that attempt, or lets you use another provider. You can set this optional PIN in settings using 6–128 characters. It is separate from your school password and device PIN. Five incorrect attempts pause PIN checks for five minutes.
 
 Keep another Duo verification method.
 
 ## Privacy and security
 
-Your account password, passkey private keys, and PIN verification record are encrypted with AES-GCM in the extension's local IndexedDB. The decryption key is also stored locally and can be used automatically by the extension. This does not protect saved credentials from someone who controls your device, Chrome profile, or extension environment.
+Your account password, passkey private keys, and PIN verification record are securely saved in the extension's local IndexedDB using industry-standard encryption with AES-GCM. The decryption key is also stored locally and can be used automatically by the extension. This does not protect saved credentials from someone who controls your device, Chrome profile, or extension environment.
 
 - No developer server, analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
 - Account credentials are filled only on recognized UChicago Okta sign-in pages after approval. Passkey responses are restricted to Duo pages admitted into that flow; private keys remain local.

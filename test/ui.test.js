@@ -130,12 +130,51 @@ test('a failed account save retains the password and leaves its fields usable', 
   assert.equal(p.nodes['account-status'].error, true);
 });
 
+test('Settings describes password, passkey, and PIN encryption from their saved state', async () => {
+  const saved = await page('settings');
+  assert.equal(saved.nodes['password-help'].hidden, false);
+  assert.equal(saved.nodes['password-help-text'].textContent,
+    'Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
+  assert.equal(saved.nodes['passkey-storage-help'].textContent,
+    'Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
+  assert.equal(saved.nodes['pin-storage-help'].hidden, true);
+  assert.equal(saved.nodes['pin-storage-help-text'].textContent, '');
+  saved.nodes['pin-settings'].open = true;
+  await saved.nodes['pin-settings'].emit('toggle');
+  assert.equal(saved.nodes['pin-storage-help'].hidden, false);
+  assert.equal(saved.nodes['pin-storage-help-text'].textContent,
+    'If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.');
+  assert.ok(saved.html.indexOf('class="credential-lock secure-help-lock" aria-hidden="true"') < saved.html.indexOf('id="password-help-text"'));
+
+  saved.nodes.username.value = 'another-account';
+  await saved.nodes.username.emit('input');
+  assert.equal(saved.nodes['password-help-text'].textContent,
+    'Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
+
+  const one = await page('settings', fixture({ credentials: [
+    { id: 'one-key', rpId: 'duosecurity.com', userName: 'test-student', createdAt: 1 }
+  ] }));
+  assert.equal(one.nodes['passkey-storage-help'].textContent,
+    'Your passkey has been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
+
+  const many = await page('settings', fixture({ credentials: [
+    { id: 'valid-key', rpId: 'duosecurity.com', userName: 'test-student', createdAt: 2 },
+    { id: 'invalid-key', rpId: 'duosecurity.com', userName: 'test-student', createdAt: 1, rejectedAt: 3 }
+  ] }));
+  assert.equal(many.nodes['passkey-storage-help'].textContent,
+    'Your passkeys have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
+});
+
 test('saving a PIN does not overwrite the account draft', async () => {
   const p = await page('settings');
+  p.nodes['pin-settings'].open = true;
+  await p.nodes['pin-settings'].emit('toggle');
   p.nodes.password.value = 'draft-password';
   p.nodes['new-pin'].value = 'new-pin-value';
   await p.nodes['pin-form'].emit('submit');
   assert.ok((await p.f.vault.read()).pin);
+  assert.equal(p.nodes['pin-storage-help-text'].textContent,
+    'Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.');
   assert.equal(p.nodes.password.value, 'draft-password');
   assert.equal(p.nodes['new-pin'].value, '');
 });
