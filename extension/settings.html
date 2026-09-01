@@ -113,16 +113,14 @@
         <summary data-i18n>Privacy</summary>
         <div class="disclosure-body">
           <dl class="privacy-notice">
-            <dt data-i18n>Stored locally</dt>
-            <dd data-i18n>Account details, passkey private keys, and the PIN verification record are encrypted in this Chrome profile. Settings and recent activity stay here too. Activity keeps up to 20 entries from the past 24 hours, without passwords, private keys, or full sign-in URLs.</dd>
+            <dt data-i18n>Protected on your device</dt>
+            <dd data-i18n>Your account details, passkey private keys, and PIN verification record are protected with AES-GCM encryption in this Chrome profile. Settings and recent activity also stay on your device. Activity keeps up to 20 entries from the past 24 hours and never includes passwords, private keys, or full sign-in URLs.</dd>
             <dt data-i18n>During sign-in</dt>
-            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. It checks each page address so passkey responses are limited to that sign-in. Private keys and the verification PIN stay on your device.</dd>
+            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. Page-address checks keep passkey responses within the sign-in you authorized, while private keys and the verification PIN stay on your device.</dd>
             <dt data-i18n>No tracking</dt>
-            <dd data-i18n>There are no ads, analytics, cloud sync, or servers receiving data for this extension. It does not access the Chrome password manager. School sites, Okta, Duo, and other passkey providers have their own privacy policies.</dd>
+            <dd data-i18n>The extension has no ads, analytics, cloud sync, or developer servers receiving your data, and it never reads the Chrome password manager.</dd>
             <dt data-i18n>Deleting data</dt>
             <dd data-i18n>Delete local data removes the saved account, password, passkeys, and PIN, and resets settings, language, and activity. Uninstalling removes all data saved by this extension. Neither action deletes your school account or Duo registrations.</dd>
-            <dt data-i18n>Security limits</dt>
-            <dd data-i18n>The extension can read its encrypted data without an additional password. Someone with control of this Chrome profile or extension may also access saved credentials. The verification PIN does not lock this data.</dd>
           </dl>
         </div>
       </details>
@@ -138,7 +136,7 @@
   </div>
   <footer class="footer">
     <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
-    <p class="version" data-i18n>Version 1.6.16</p>
+    <p class="version" data-i18n>Version 1.6.17</p>
     <p lang="en-US" translate="no">© 2026 Songming.org</p>
   </footer>
 </main>

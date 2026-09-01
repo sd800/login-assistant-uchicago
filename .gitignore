@@ -4,6 +4,4 @@ node_modules/
 *.log
 .env*
 coverage/
-CHANGELOG.md
-CHANGELOG_zh.md
 sidenote/

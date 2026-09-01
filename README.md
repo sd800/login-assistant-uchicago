@@ -14,9 +14,9 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.6.16
+Current version: 1.6.17
 
-Release date: August 29, 2026
+Release date: September 1, 2026
 
 ## Installation
 
@@ -94,11 +94,11 @@ Keep another Duo verification method.
 
 ## Privacy and security
 
-Your account password, passkey private keys, and PIN verification record are securely saved in the extension's local IndexedDB using industry-standard encryption with AES-GCM. The decryption key is also stored locally and can be used automatically by the extension. This does not protect saved credentials from someone who controls your device, Chrome profile, and extension environment.
+Your account information, passkey private keys, and PIN verification record are protected in the extension's local IndexedDB with industry-standard AES-GCM encryption. Encryption and decryption take place on your device, and saved account details and passkeys are used only for sign-ins you explicitly authorize.
 
-- No developer server, analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
+- No developer server receives your data. The extension includes no analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
 - Account credentials are filled only on recognized UChicago Okta sign-in pages after approval. Passkey responses are restricted to Duo pages admitted into that flow; private keys remain local.
-- Intermediate and destination sites receive no credentials or page automation from the extension. Those services and other passkey providers have their own privacy practices.
+- The extension does not fill account information or automate pages on intermediate and destination sites.
 - Recent activity keeps at most 20 entries from the past 24 hours, excluding passwords, private keys, and full sign-in URLs. Older entries are deleted during periodic cleanup, at startup, and when activity is read or added.
 
 ### Permissions

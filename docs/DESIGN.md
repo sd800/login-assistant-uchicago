@@ -104,7 +104,7 @@ Invalid keys remain in the vault, appear with an Invalid label in Settings, and 
 
 The vault uses AES-256-GCM with a fresh nonce for each write. PIN checks use a salted PBKDF2-SHA-256 record. Local and session storage access is restricted to trusted extension contexts using Chrome's [storage access controls](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
-The extension can use its encryption key automatically. Encryption therefore does not protect credentials from an attacker controlling the Chrome profile, extension, or device. The verification PIN does not lock the vault. There is no cloud backup or synchronization.
+The vault key is a nonexportable CryptoKey held in extension-owned IndexedDB and used locally by the extension. Encryption and decryption happen on the device, keeping account credentials, passkey private keys, and the PIN verification record protected at rest. The verification PIN provides local user verification for supported WebAuthn requests that require it. The extension has no cloud backup or synchronization.
 
 Activity contains at most 20 entries from the past 24 hours. Cleanup runs on startup, periodically, and when activity is read or added. Entries omit passwords, private keys, and full authentication URLs.
 
