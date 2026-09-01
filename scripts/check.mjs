@@ -104,8 +104,8 @@ for (const file of englishFiles) {
   if (file !== join(extension, 'locales/zh-CN.js')) assert.ok(!/\p{Script=Han}/u.test(source), `Translation copy outside the locale catalog: ${file}`);
   if (file.startsWith(`${extension}/`)) assert.ok(!/PingFang SC|Microsoft YaHei/.test(source), `Unexpected platform-specific font: ${file}`);
 }
-// Compare document structure while allowing each language its own prose and switch link.
-function readmeStructure(text, languageTarget) {
+// Compare document structure while allowing each language its own prose and language-specific links.
+function readmeStructure(text, languageTarget, changelogTarget) {
   const prose = text.replace(/^```[^\n]*\n[\s\S]*?^```/gm, '');
   return {
     headingLevels: [...prose.matchAll(/^(#{1,6}) /gm)].map(match => match[1].length),
@@ -114,13 +114,15 @@ function readmeStructure(text, languageTarget) {
     code: [...prose.matchAll(/`([^`\n]+)`/g)].map(match => match[1]).sort(),
     links: [...prose.matchAll(/\[[^\]\n]+\]\(([^)\s]+)\)/g)].map(match => match[1])
       .filter(target => !target.startsWith('#'))
-      .map(target => target === languageTarget ? 'language-switch' : target).sort(),
+      .map(target => target === languageTarget ? 'language-switch' : target === changelogTarget ? 'changelog' : target).sort(),
     commands: [...text.matchAll(/^```sh\n([\s\S]*?)^```/gm)].flatMap(match =>
       match[1].split('\n').map(line => line.replace(/\s+#.*$/, '').trim()).filter(Boolean))
   };
 }
 const englishReadme = await readFile(join(root, 'README.md'), 'utf8');
 const chineseReadme = await readFile(join(root, 'README_zh.md'), 'utf8');
-assert.deepEqual(readmeStructure(chineseReadme, 'README.md'), readmeStructure(englishReadme, 'README_zh.md'),
+assert.deepEqual(
+  readmeStructure(chineseReadme, 'README.md', 'CHANGELOG_zh.md'),
+  readmeStructure(englishReadme, 'README_zh.md', 'CHANGELOG.md'),
   'README sections, tables, code examples, or links differ between languages.');
 console.log(`Static checks passed: ${files.length} extension files and ${scripts} JavaScript modules; manifest, icons, imports, interface bindings, localization, and documentation.`);

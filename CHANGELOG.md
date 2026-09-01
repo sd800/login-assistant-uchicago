@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.6.18 - 2026-09-01
+
+### Changed
+
+- Improved documentation navigation across both README languages.
+
+### Verification
+
+- Static checks pass for documentation parity, version metadata, localization, and the manifest.
+
 ## 1.6.17 - 2026-09-01
 
 ### Changed
