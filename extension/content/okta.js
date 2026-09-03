@@ -76,6 +76,8 @@
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type === 'RECHECK') {
       stopped = false; approved = false; checkAfter = 0; pending = null; attempted.clear(); schedule();
+    } else if (message?.type === 'FLOW_WAKE') {
+      schedule();
     } else if (message?.type === 'LOGIN_APPROVED') {
       approved = true; checkAfter = 0; schedule();
     }

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import vm from 'node:vm';
 import { readFile } from 'node:fs/promises';
 import { Element, element as e, documentWith } from './dom-fixture.mjs';
-import { fixture, sender, ui, DUO, creation } from './helpers.mjs';
+import { fixture, sender, ui, OKTA, DUO, creation } from './helpers.mjs';
 import { STUDENT_LOGIN_URL, CANVAS_LOGIN_URL, DUO_MATCH } from '../extension/core/policy.js';
 
 const scripts = Object.fromEntries(await Promise.all(['routes', 'dom', 'entry', 'okta', 'duo'].map(async name =>
@@ -612,6 +612,32 @@ test('a menu rerender during click authorization stays retryable and clicks the 
   await a.tick(); assert.equal(fresh.clicks, 1);
 });
 
+
+test('a service-worker wake advances a background Duo menu without waiting for its timer', async () => {
+  const f = fixture({ credentials: [{ id: 'key', rpId: 'duosecurity.com', userName: 'test-student' }] });
+  await f.start();
+  const from = await f.toDuo();
+  const document = documentWith();
+  const a = await adapter('duo', document, from.url, f, from.documentId);
+  const options = e('button', {}, 'Other options');
+  document.body.append(options);
+  for (const listener of a.listeners) listener({ type: 'FLOW_WAKE' });
+  await flush(); await flush();
+  assert.equal(options.clicks, 1);
+});
+
+test('a service-worker wake advances a background Okta document without waiting for its timer', async () => {
+  const f = fixture();
+  await f.start();
+  const document = documentWith();
+  const a = await adapter('okta', document, `${OKTA}/login`, f);
+  const { form, username, button } = accountForm();
+  document.body.append(form);
+  for (const listener of a.listeners) listener({ type: 'FLOW_WAKE' });
+  await flush(); await flush();
+  assert.equal(username.value, 'test-student');
+  assert.equal(button.clicks, 1);
+});
 
 test('Okta advances across reused buttons without a timer or duplicate submissions', async () => {
   const { form, username, secret, button } = accountForm();

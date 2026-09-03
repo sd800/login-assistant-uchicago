@@ -46,6 +46,8 @@
   chrome.runtime.onMessage.addListener(message => {
     if (message?.type === 'RECHECK') {
       stopped = false; approved = false; checkAfter = 0; schedule();
+    } else if (message?.type === 'FLOW_WAKE') {
+      schedule();
     } else if (message?.type === 'LOGIN_APPROVED') { approved = true; checkAfter = 0; schedule(); }
   });
   const observer = new MutationObserver(schedule);

@@ -30,6 +30,8 @@ export function fixture(data = {}) {
   let now = 100_000;
   let vaultData = { ...emptyVault(), username: 'test-student', password: 'test-only-password', ...data };
   const frames = new Map([[7, { documentId: 'okta-document', url: `${OKTA}/login` }]]);
+  const tabProperties = new Map([[7, { autoDiscardable: true }]]);
+  const tabUpdates = [];
   const windows = new Map();
   let nextWindow = 20;
   const scripts = new Map();
@@ -83,7 +85,22 @@ export function fixture(data = {}) {
         for (const rule of change.addRules || []) rules.set(rule.id, structuredClone(rule));
       }
     },
-    tabs: { async reload(id) { reloaded.push(id); }, async create(options) { const id = Math.max(...frames.keys()) + 1; frames.set(id, { url: options.url, documentId: 'setup-entry-' + id }); return { id, ...options }; }, async get(id) { return { id, ...frames.get(id) }; }, async sendMessage(id, message) { sent.push({ id, message }); } },
+    tabs: {
+      async reload(id) { reloaded.push(id); },
+      async create(options) {
+        const id = Math.max(...frames.keys()) + 1;
+        frames.set(id, { url: options.url, documentId: 'setup-entry-' + id });
+        tabProperties.set(id, { autoDiscardable: true });
+        return { id, ...tabProperties.get(id), ...options };
+      },
+      async get(id) { return { id, ...tabProperties.get(id), ...frames.get(id) }; },
+      async update(id, properties) {
+        tabUpdates.push({ id, properties: structuredClone(properties) });
+        tabProperties.set(id, { ...tabProperties.get(id), ...structuredClone(properties) });
+        return { id, ...tabProperties.get(id), ...frames.get(id) };
+      },
+      async sendMessage(id, message) { sent.push({ id, message }); }
+    },
     windows: { async create(options) { const id = nextWindow++; windows.set(id, options); return { id }; }, async remove(id) { windows.delete(id); } },
     scripting: {
       async getRegisteredContentScripts() { return [...scripts.values()]; },
@@ -94,7 +111,7 @@ export function fixture(data = {}) {
   const vault = { async read() { return structuredClone(vaultData); }, async write(value) { vaultData = structuredClone(value); } };
   const controller = new Controller(api, vault, () => now);
   return {
-    controller, api, vault, frames, windows, scripts, permissions, sent, rules, ruleUpdates, reloaded, cookieOps,
+    controller, api, vault, frames, windows, scripts, permissions, sent, rules, ruleUpdates, reloaded, cookieOps, tabUpdates,
     setCookies: values => { cookies = structuredClone(values); }, cookies: () => structuredClone(cookies),
     clock: () => now, advance: ms => { now += ms; },
     state: () => api.storage.session.data.state,

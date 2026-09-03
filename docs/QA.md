@@ -39,11 +39,11 @@ node --test --test-name-pattern='a failed account save' test/ui.test.js
 | `ui` | Independent saves, preserved drafts, pause and retry controls, deletion, and confirmation shortcuts |
 | `locale` | Translation keys, dates, language preferences, startup rendering, and cross-window updates |
 | `theme` | Contrast, control visibility, icon proportions, and text spacing |
-| `controller` | Approval, redirects, expiry, concurrency, worker restarts, settings actions, and activity retention |
+| `controller` | Approval, redirects, expiry, concurrency, background-tab protection, worker restarts, settings actions, and activity retention |
 | `policy` | Supported routes, HTTPS origins, credential matching, and grant limits |
 | `crypto` | Encoding, registration data, independently checked signatures, encrypted storage, and PIN verification |
 | `bridge` | WebAuthn request transfer, cancellation, expiry, and native fallback |
-| `dom` | Fixed entry navigation, Okta form recognition, delayed page content, multilingual Duo controls, and excluded forms |
+| `dom` | Fixed entry navigation, Okta form recognition, background wake events, delayed page content, multilingual Duo controls, and excluded forms |
 
 Fixtures use synthetic accounts, requests, clocks, and browser/DOM substitutes. These tests do not run a real Chrome session or contact Okta or Duo.
 
@@ -65,7 +65,7 @@ For cross-platform changes, repeat the relevant checks in desktop Chrome on each
 Keep another working Duo verification method before testing local passkeys.
 
 1. Start from my.UChicago using HTTP and HTTPS, the student portal, Courses, or an application that redirects to UChicago Okta. On my.UChicago, confirmation should open in the current tab without a blocked-resource page; Confirm should skip the portal and open AIS student sign-in. Confirming on the student portal should also open the fixed AIS sign-in without waiting for portal content. Also test a link from another site. Other supported entry pages should keep their confirmation window.
-2. Follow the recognized Okta steps and any Duo redirects in the same tab. Check delayed forms, controls that appear before the page finishes painting, disabled buttons becoming enabled, and buttons reused between username and password screens. Confirmation and page changes should advance the form without waiting for a timer, and repeated renders must not submit a password twice. Check that the intended application opens under the expected account.
+2. Follow the recognized Okta steps and any Duo redirects in the same tab. Check delayed forms, controls that appear before the page finishes painting, disabled buttons becoming enabled, and buttons reused between username and password screens. Confirmation and page changes should advance the form without waiting for a timer, and repeated renders must not submit a password twice. After confirmation, switch to another tab and leave the approved sign-in tab in the background through Okta and compatible automatic Duo verification; it should continue without being selected. Check that the intended application opens under the expected account.
 3. Repeat with a fresh sign-in. Verify English first, then repeat the recognized Okta and Duo screens with Simplified Chinese. Verify the English Duo menu both with automatic selection and by manually selecting Security Key after a remembered Touch ID method. Other options must remain retryable if the link is replaced before the click, and must not reopen after the menu has appeared. If Duo asks whether this is your device after verification, the affirmative choice should be clicked once; the negative choice must remain untouched. If the page is absent, sign-in should continue without waiting. An existing school session can skip authentication and cannot verify password or passkey handling.
 4. Cancel a prompt and check that the same document does not immediately ask again. Canceling the my.UChicago shortcut should open the regular portal without a second prompt. Check Enter, Space, Escape, expiry, and Retry sign-in on that page. Pausing the extension or removing the account should restore my.UChicago's normal portal redirect. Requests for other paths, real query parameters, subframes, and POSTs must not use the navigation shortcut.
 5. Check that another tab, manual navigation, expired approval, pausing, and revoked site access cannot reuse an earlier approval.

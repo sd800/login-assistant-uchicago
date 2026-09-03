@@ -211,6 +211,18 @@ test('cleanup expires approvals and does not repeatedly prompt on the same page'
   assert.equal(Object.keys(f.state().prompts).length, 0);
 });
 
+test('approved flows prevent automatic tab discard and restore the previous setting when authority ends', async () => {
+  const f = fixture();
+  await f.start();
+  assert.deepEqual(f.tabUpdates, [{ id: 7, properties: { autoDiscardable: false } }]);
+  f.advance(FLOW_MS);
+  assert.deepEqual(await f.controller.cleanup(), []);
+  assert.deepEqual(f.tabUpdates, [
+    { id: 7, properties: { autoDiscardable: false } },
+    { id: 7, properties: { autoDiscardable: true } }
+  ]);
+});
+
 test('expired flow is stopped even before periodic cleanup has run', async () => {
   const f = fixture(); await f.start(); f.advance(FLOW_MS);
   assert.equal((await f.controller.dispatch({ type: 'LOGIN_DETECTED' }, sender())).status, 'expired');

@@ -79,7 +79,7 @@
     if (['create', 'get'].includes(kind)) void send({ type: 'PK_FALLBACK', kind, reason }).catch(() => {});
   }
   async function waitForFlow(pageId, timeout) {
-    const handshakeUntil = Date.now() + 1_500;
+    const handshakeUntil = Date.now() + 10_000;
     let approvedFlowSeen = false;
     const deadline = Date.now() + Math.min(120_000, Math.max(1_000, Number(timeout) || 120_000));
     while (jobs.has(pageId)) {
@@ -314,6 +314,9 @@
       if (rerun) { rerun = false; void Promise.resolve().then(tick); }
     }
   }
+  chrome.runtime.onMessage?.addListener(message => {
+    if (message?.type === 'FLOW_WAKE' && !failed) rememberMenu();
+  });
   // Observe manual verification before any later automatic action can run.
   menuObserver = new MutationObserver(rememberMenu);
   menuObserver.observe(document, { childList: true, subtree: true, characterData: true,
@@ -327,6 +330,10 @@
     }
     rememberMenu();
   }, true);
+  window.addEventListener('DOMContentLoaded', rememberMenu, { once: true });
+  window.addEventListener('pageshow', rememberMenu);
+  window.addEventListener('online', rememberMenu);
+  window.addEventListener('visibilitychange', rememberMenu);
   setInterval(tick, 700);
   rememberMenu();
   window.addEventListener('pagehide', () => {

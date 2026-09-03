@@ -278,7 +278,7 @@ export default Object.freeze({
   "Reload the extension and allow its site access before adding a passkey.": "请重新加载插件，并允许访问相关网站，然后再添加通行密钥。",
   "Unable to prepare a fresh sign-in. Close other school sign-in tabs and try adding the passkey again.": "无法准备新的登录。请关闭其他学校登录标签页，再重新添加通行密钥。",
   "Your saved account or settings changed. Start passkey setup again.": "已保存的账号或设置发生变化，请重新添加通行密钥。",
-  "Version 1.6.18": "版本 1.6.18",
+  "Version 1.7.1": "版本 1.7.1",
   "If sign-in stops at Duo, check this extension’s site access in Chrome.": "若登录停在 Duo 页面，请检查 Chrome 是否允许本插件访问该网站。",
   "Continuing Duo verification for this school sign-in.": "正在进行 Duo 验证。",
   "Automatic sign-in steps ended. Check the destination site to confirm sign-in.": "自动操作已结束，请确认是否已成功登录。",

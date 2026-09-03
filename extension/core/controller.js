@@ -115,6 +115,28 @@ export class Controller {
     return !!frame && (!frame.documentLifecycle || frame.documentLifecycle === 'active') && frame.documentId === sender.documentId && new URL(frame.url).origin === new URL(sender.url).origin;
   }
   async closeWindow(id) { if (id !== undefined) await this.api.windows.remove(id).catch(() => {}); }
+  async protectFlowTab(flow) {
+    if (!flow || flow.tabProtected) return;
+    try {
+      const tab = await this.api.tabs.get(flow.tabId);
+      flow.restoreAutoDiscardable = tab.autoDiscardable !== false;
+      if (flow.restoreAutoDiscardable) await this.api.tabs.update(flow.tabId, { autoDiscardable: false });
+      flow.tabProtected = true;
+    } catch { /* The tab may have closed while approval was being recorded. */ }
+  }
+  async releaseFlowTab(flow) {
+    if (!flow?.tabProtected) return;
+    const restore = flow.restoreAutoDiscardable === true;
+    delete flow.tabProtected;
+    delete flow.restoreAutoDiscardable;
+    if (restore) await this.api.tabs.update(flow.tabId, { autoDiscardable: true }).catch(() => {});
+  }
+  wakeTargets() {
+    return Object.values(this.state.flows).filter(flow => liveFlow(flow, this.now())).map(flow => ({
+      tabId: flow.tabId, frameId: 0,
+      documentId: flow.stage === 'auth' ? flow.authDocumentId : flow.stage === 'entry' ? flow.documentId : ''
+    })).filter(target => target.documentId);
+  }
   async showPrompt(prompt) {
     prompt.id = randomId();
     prompt.deadline = this.now() + PROMPT_MS;
@@ -219,7 +241,10 @@ export class Controller {
       }
       if (entryKind && flow.entryKind === entryKind && flow.documentId === sender.documentId) return { status: 'active' };
     }
-    if (flow?.status === 'active') { flow.status = 'expired'; flow.grant = null; }
+    if (flow?.status === 'active') {
+      flow.status = 'expired'; flow.grant = null;
+      await this.releaseFlowTab(flow);
+    }
     if (flow?.documentId === sender.documentId && ['asking', 'cancelled', 'error', 'expired'].includes(flow.status)) return { status: flow.status };
     const data = await this.vault.read();
     if (!data.username || !data.password) return { status: 'needs-setup' };
@@ -244,6 +269,7 @@ export class Controller {
     if (approvedSetup) {
       next.expiresAt = intent.deadline;
       this.authorizePasskeys(next, credentialsForAccount(data.credentials, data.username, settings.selectedCredentialId), data.username, false);
+      await this.protectFlowTab(next);
       await this.note("Sign-in approved.");
       return { status: 'active' };
     }
@@ -343,7 +369,11 @@ export class Controller {
       const passwordKey = sender.documentId + ':password';
       const usesPassword = ['password', 'combined'].includes(message.step);
       if (flow.attempts[key] || (usesPassword && flow.attempts[passwordKey])) return { skipped: true };
-      if (Object.keys(flow.attempts).length >= 8) { flow.status = 'error'; flow.grant = null; throw new Error("The sign-in took too many steps. The assistant has stopped."); }
+      if (Object.keys(flow.attempts).length >= 8) {
+        flow.status = 'error'; flow.grant = null;
+        await this.releaseFlowTab(flow);
+        throw new Error("The sign-in took too many steps. The assistant has stopped.");
+      }
       const data = await this.vault.read();
       if (message.step === 'duo') flow.duoHandoffUntil = this.now() + HANDOFF_MS;
       flow.attempts[key] = true;
@@ -352,7 +382,10 @@ export class Controller {
       return { username: ['username', 'combined'].includes(message.step) ? data.username : undefined, password: ['password', 'combined'].includes(message.step) ? data.password : undefined };
     }
     if (message.type === 'FLOW_ERROR') {
-      if (flow) { flow.status = 'error'; flow.grant = null; }
+      if (flow) {
+        flow.status = 'error'; flow.grant = null;
+        await this.releaseFlowTab(flow);
+      }
       await this.note("The assistant stopped because of a page error or an unsupported step. Check the sign-in page.");
       return { status: 'error' };
     }
@@ -718,7 +751,10 @@ export class Controller {
       if (prompt.kind === 'repair') this.releaseDuo(prompt);
       if (prompt.kind === 'login') {
         const flow = this.state.flows[prompt.tabId];
-        if (flow) { flow.status = 'cancelled'; flow.grant = null; }
+        if (flow) {
+          flow.status = 'cancelled'; flow.grant = null;
+          await this.releaseFlowTab(flow);
+        }
       } else {
         const job = this.state.jobs[prompt.jobId];
         if (job) job.result = message.action === 'fallback' ? { fallback: true, explicit: true } : failure('NotAllowedError', "Canceled by the user.");
@@ -777,6 +813,7 @@ export class Controller {
       flow.expiresAt = this.now() + FLOW_MS;
       flow.grant = null;
       if (automatesDuo(flow, settings)) this.authorizePasskeys(flow, credentialsForAccount(data.credentials, data.username, settings.selectedCredentialId), data.username, uv);
+      await this.protectFlowTab(flow);
       await this.note("Sign-in approved.");
     } else {
       const job = this.state.jobs[prompt.jobId];
@@ -810,12 +847,15 @@ export class Controller {
     }
   }
   async invalidateTab(tabId) {
+    const flow = this.state.flows[tabId];
+    await this.releaseFlowTab(flow);
     delete this.state.flows[tabId];
     if (this.state.setups) delete this.state.setups[tabId];
     for (const [id, job] of Object.entries(this.state.jobs)) if (job.tabId === tabId) { await this.cancelJob(id); delete this.state.jobs[id]; }
     for (const [id, prompt] of Object.entries(this.state.prompts)) if (prompt.tabId === tabId) { delete this.state.prompts[id]; await this.closeWindow(prompt.windowId); }
   }
   async invalidateAll() {
+    for (const flow of Object.values(this.state.flows)) await this.releaseFlowTab(flow);
     for (const prompt of Object.values(this.state.prompts)) await this.closeWindow(prompt.windowId);
     this.state = emptyState();
   }
@@ -900,8 +940,16 @@ export class Controller {
     return this.exclusive(async () => {
       for (const [id, prompt] of Object.entries(this.state.prompts)) if (prompt.windowId === windowId) {
         if (prompt.kind === 'repair') this.releaseDuo(prompt);
-        if (prompt.kind === 'login') { const flow = this.state.flows[prompt.tabId]; if (flow) { flow.status = 'cancelled'; flow.grant = null; } }
-        else { const job = this.state.jobs[prompt.jobId]; if (job && !job.result) job.result = failure('NotAllowedError', "The confirmation window was closed."); }
+        if (prompt.kind === 'login') {
+          const flow = this.state.flows[prompt.tabId];
+          if (flow) {
+            flow.status = 'cancelled'; flow.grant = null;
+            await this.releaseFlowTab(flow);
+          }
+        } else {
+          const job = this.state.jobs[prompt.jobId];
+          if (job && !job.result) job.result = failure('NotAllowedError', "The confirmation window was closed.");
+        }
         delete this.state.prompts[id];
       }
     });
@@ -922,8 +970,12 @@ export class Controller {
         if (flow.stage === 'transit' && flow.transitUntil <= this.now()) {
           await this.invalidateTab(Number(tabId));
           await this.note("Automatic sign-in steps ended. Check the destination site to confirm sign-in.");
-        } else if (flow.expiresAt <= this.now()) { flow.status = 'expired'; flow.grant = null; }
+        } else if (flow.expiresAt <= this.now()) {
+          flow.status = 'expired'; flow.grant = null;
+          await this.releaseFlowTab(flow);
+        }
       }
+      return this.wakeTargets();
     });
   }
 }

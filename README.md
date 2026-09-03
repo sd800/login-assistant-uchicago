@@ -14,9 +14,9 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.6.18
+Current version: 1.7.1
 
-Release date: September 1, 2026
+Release date: September 3, 2026
 
 ## Installation
 
@@ -49,6 +49,8 @@ The assistant asks:
 Choose **Confirm** to continue or **Cancel** to stop the attempt. On my.UChicago, the prompt appears in the current tab and Cancel opens the regular portal. Pausing the assistant or removing the saved account restores the normal my.UChicago navigation. **Enter** or **Space** confirms when focus is on the page or Confirm button; **Esc** cancels. Inputs and other focused controls keep their normal keyboard behavior.
 
 Start from the application you want to access, not the `uchicago.okta.com` account management home page. The referring application and final destination do not need to end in `uchicago.edu`. Redirects stay within the approved flow in the same tab; an existing session may also return directly to the application without visiting Duo.
+
+After confirmation, the approved tab can continue supported sign-in steps while you use another tab. The assistant keeps the tab available during the five-minute flow and wakes its page adapters from browser navigation events. Any Duo step that asks for input still needs your response.
 
 After Duo verification, the assistant selects **Yes, this is my device** if Duo asks **Is this your device?**. If that page does not appear, sign-in continues normally.
 

@@ -8,6 +8,19 @@ const ready = Promise.all([
   chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })
 ]);
 function quietly(promise) { promise.catch(() => { /* No credentials or page data in console logs. */ }); }
+async function wakeDocument(details) {
+  if (details?.frameId !== 0 || !Number.isInteger(details.tabId) || !details.documentId) return;
+  await chrome.tabs.sendMessage(details.tabId, { type: 'FLOW_WAKE' }, { documentId: details.documentId }).catch(() => {});
+}
+async function navigation(details) {
+  await ready;
+  await controller.navigation(details);
+  await wakeDocument(details);
+}
+async function maintain() {
+  const targets = await controller.cleanup();
+  await Promise.all(targets.map(wakeDocument));
+}
 const language = createLanguagePreference(chrome.storage.local, chrome.storage.onChanged, chrome.i18n.getUILanguage());
 function updateTitle() { return chrome.action.setTitle({ title: translate('UChicago Login Assistant', language.locale) }); }
 language.subscribe(() => quietly(updateTitle()));
@@ -19,14 +32,16 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   );
   return true;
 });
-chrome.webNavigation.onCommitted.addListener(details => quietly(ready.then(() => controller.navigation(details))));
-chrome.webNavigation.onHistoryStateUpdated.addListener(details => quietly(ready.then(() => controller.navigation(details))));
+chrome.webNavigation.onCommitted.addListener(details => quietly(navigation(details)));
+chrome.webNavigation.onHistoryStateUpdated.addListener(details => quietly(navigation(details)));
+chrome.webNavigation.onDOMContentLoaded.addListener(details => quietly(ready.then(() => wakeDocument(details))));
+chrome.webNavigation.onCompleted.addListener(details => quietly(ready.then(() => wakeDocument(details))));
 chrome.tabs.onRemoved.addListener(id => quietly(ready.then(() => controller.exclusive(() => controller.invalidateTab(id)))));
 chrome.windows.onRemoved.addListener(id => quietly(ready.then(() => controller.windowClosed(id))));
-chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'cleanup') quietly(ready.then(() => controller.cleanup())); });
+chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'cleanup') quietly(ready.then(maintain)); });
 function initialize() {
-  quietly(ready.then(() => controller.exclusive(() => controller.syncScripts())).then(() => controller.cleanup()));
-  quietly(chrome.alarms.create('cleanup', { periodInMinutes: 1 }));
+  quietly(ready.then(() => controller.exclusive(() => controller.syncScripts())).then(maintain));
+  quietly(chrome.alarms.create('cleanup', { periodInMinutes: 0.5 }));
 }
 chrome.runtime.onInstalled.addListener(details => {
   initialize();

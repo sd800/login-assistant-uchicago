@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { Element, element as e, documentWith } from './dom-fixture.mjs';
-import { fixture, ui, DUO, sender, creation } from './helpers.mjs';
+import { fixture, ui, OKTA, DUO, sender, creation } from './helpers.mjs';
 import { emptyVault, newPin } from '../extension/core/vault.js';
 import { CONFIRM_TEXT } from '../extension/core/policy.js';
 import { PORTAL_URL } from '../extension/core/shortcut.js';
@@ -69,7 +69,7 @@ test('only a new installation opens Settings, not worker startup, updates, or br
   const f = fixture(), hooks = {};
   let opened = 0;
   for (const [namespace, events] of Object.entries({
-    runtime: ['onMessage', 'onInstalled', 'onStartup'], webNavigation: ['onCommitted', 'onHistoryStateUpdated'],
+    runtime: ['onMessage', 'onInstalled', 'onStartup'], webNavigation: ['onCommitted', 'onHistoryStateUpdated', 'onDOMContentLoaded', 'onCompleted'],
     tabs: ['onRemoved'], windows: ['onRemoved'], alarms: ['onAlarm'], permissions: ['onRemoved', 'onAdded']
   })) {
     f.api[namespace] ||= {};
@@ -101,6 +101,16 @@ test('only a new installation opens Settings, not worker startup, updates, or br
   hooks['runtime.onStartup']();
   await settle();
   assert.equal(opened, 1);
+
+  f.sent.length = 0;
+  const details = { tabId: 7, frameId: 0, documentId: 'okta-document', url: `${OKTA}/login` };
+  hooks['webNavigation.onDOMContentLoaded'](details);
+  hooks['webNavigation.onCompleted'](details);
+  await settle();
+  assert.equal(JSON.stringify(f.sent), JSON.stringify([
+    { id: 7, message: { type: 'FLOW_WAKE' } },
+    { id: 7, message: { type: 'FLOW_WAKE' } }
+  ]));
 });
 
 test('saving Account preserves the other form and PIN inputs', async () => {

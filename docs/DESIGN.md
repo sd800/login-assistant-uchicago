@@ -31,6 +31,8 @@ Portal approval opens the fixed HTTPS AIS student endpoint without waiting for t
 
 Okta recognition prioritizes input names and autocomplete attributes, the fixed sign-in submit ID, save controls, and native submit buttons. These structural identifiers work across interface languages; visible English and Chinese labels provide a fallback. Multiple matching primary controls are left untouched. New-password and one-time-code fields are excluded structurally, and nonempty Okta error containers stop automation regardless of their message language. The fixed sign-in ID and field definitions are present in Okta's [primary authentication form](https://github.com/okta/okta-signin-widget/blob/master/src/v1/views/primary-auth/PrimaryAuthForm.js).
 
+An approved tab does not need to remain selected. While its five-minute flow is live, the controller disables automatic tab discarding and restores the tab's previous setting when authority ends. The service worker sends document-scoped wake messages after navigation commits, DOM readiness, page completion, startup recovery, and periodic maintenance. Entry, Okta, and Duo adapters treat these messages as event-driven rechecks, so their normal progress does not depend on foreground timer frequency. Mutation observers and lifecycle events remain the primary page-state signals; bounded timers provide fallback recovery.
+
 The controller tracks four stages:
 
 | Stage | Meaning |

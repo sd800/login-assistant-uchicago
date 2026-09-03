@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.7.1 - 2026-09-03
+
+### Changed
+
+- After the user authorizes a sign-in, the extension can still continue to complete the login verification steps within the authorized tab, even if the user switches to another tab or window.
+
+### Verification
+
+- Focused controller, page-adapter, interface, localization, and passkey tests pass together with the static checks.
+
 ## 1.6.18 - 2026-09-01
 
 ### Changed
