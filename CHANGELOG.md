@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.7.2 - 2026-09-20
+
+### Changed
+
+- Simplified the saved passkey section in Settings by removing redundant deletion guidance.
+
+### Verification
+
+- Focused interface and localization tests pass together with the static checks.
+
 ## 1.7.1 - 2026-09-03
 
 ### Changed
