@@ -1,6 +1,6 @@
-import { Controller } from './core/controller.js';
-import { Vault, indexedRepository } from './core/vault.js';
-import { createLanguagePreference, translate } from './core/locale.js';
+import { Controller } from '../core/controller.js';
+import { Vault, indexedRepository } from '../core/vault.js';
+import { createLanguagePreference, translate } from '../core/locale.js';
 
 const controller = new Controller(chrome, new Vault(indexedRepository()));
 const ready = Promise.all([

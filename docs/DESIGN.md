@@ -6,24 +6,24 @@ UChicago Login Assistant is a Manifest V3 extension that coordinates a confirmed
 
 | Component | Responsibility |
 | --- | --- |
-| [Service worker](../extension/background.js) | Connects Chrome events to the controller and initializes storage and cleanup |
+| [Service worker](../extension/background/service-worker.js) | Connects Chrome events to the controller and initializes storage and cleanup |
 | [Controller](../extension/core/controller.js) | Owns approvals, navigation state, settings actions, and passkey jobs |
 | [Routes](../extension/content/routes.js) and [policy](../extension/core/policy.js) | Identify supported pages and validate origins, credentials, and expiry |
-| [Navigation shortcut](../extension/core/shortcut.js) and [start page](../extension/start.html) | Confirm my.UChicago navigation before its portal redirect |
+| [Navigation shortcut](../extension/core/shortcut.js) and [start page](../extension/pages/start.html) | Confirm my.UChicago navigation before its portal redirect |
 | [Page adapters](../extension/content/) | Recognize entry, Okta, and Duo controls and perform authorized actions |
 | [Passkey bridge](../extension/content/passkey-bridge.js) | Connects page WebAuthn calls to the isolated Duo adapter |
 | [Passkey implementation](../extension/core/passkeys.js) | Validates requests and creates registration and assertion responses |
 | [Vault](../extension/core/vault.js) and [encoding](../extension/core/encoding.js) | Encrypt credentials and encode authentication data |
-| [Settings](../extension/settings.html), [popup](../extension/popup.html), and [confirmation](../extension/confirm.html) | Present account controls, status, and approval requests |
-| [Localization](../extension/localization.js) and [locale preferences](../extension/core/locale.js) | Apply interface text and synchronize language choices |
+| [Settings](../extension/pages/settings.html), [popup](../extension/pages/popup.html), and [confirmation](../extension/pages/confirm.html) | Present account controls, status, and approval requests |
+| [Localization](../extension/ui/localization.js) and [locale preferences](../extension/core/locale.js) | Apply interface text and synchronize language choices |
 
 ## Sign-in lifecycle
 
 A sign-in starts on my.UChicago, its portal, the Courses homepage, or a recognized UChicago Okta login page. The controller requires confirmation before releasing account credentials or starting an entry-page action. my.UChicago uses a confirmation page in the current tab; other entry pages use a separate confirmation window.
 
-A dynamic [declarative navigation rule](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest) redirects top-level GET requests for the HTTP or HTTPS my.UChicago homepage to `start.html`, before the server's portal redirect. It excludes other paths and nonempty query parameters. The rule exists only while the assistant is enabled, an account is saved, and my.UChicago access is available. Initialization, account changes, and permission changes synchronize it without rewriting an unchanged rule. An unreadable account removes the rule.
+A dynamic [declarative navigation rule](https://developer.chrome.com/docs/extensions/reference/api/declarativeNetRequest) redirects top-level GET requests for the HTTP or HTTPS my.UChicago homepage to `pages/start.html`, before the server's portal redirect. It excludes other paths and nonempty query parameters. The rule exists only while the assistant is enabled, an account is saved, and my.UChicago access is available. Initialization, account changes, and permission changes synchronize it without rewriting an unchanged rule. An unreadable account removes the rule.
 
-Only `start.html` is declared as a [web-accessible resource](https://developer.chrome.com/docs/extensions/reference/manifest/web-accessible-resources), allowing address-bar navigation and links from other sites. Its public markup contains no account information. Scripts, settings, and ordinary confirmation pages remain private. Frame restrictions and controller checks admit only the extension's current top-level start-page document; the public page cannot request account passwords. The controller uses `runtime.getContexts()` to validate that extension document at load and approval time, because `webNavigation.getFrame()` excludes extension pages. Ordinary website documents continue to use `webNavigation.getFrame()`. Split incognito mode allows that resource to open when the user has separately enabled the extension in private windows.
+Only `pages/start.html` is declared as a [web-accessible resource](https://developer.chrome.com/docs/extensions/reference/manifest/web-accessible-resources), allowing address-bar navigation and links from other sites. Its public markup contains no account information. Scripts, settings, and ordinary confirmation pages remain private. Frame restrictions and controller checks admit only the extension's current top-level start-page document; the public page cannot request account passwords. The controller uses `runtime.getContexts()` to validate that extension document at load and approval time, because `webNavigation.getFrame()` excludes extension pages. Ordinary website documents continue to use `webNavigation.getFrame()`. Split incognito mode allows that resource to open when the user has separately enabled the extension in private windows.
 
 The start page shares the ordinary confirmation UI and keyboard behavior. Approval opens the fixed HTTPS AIS student endpoint in the same tab and starts the usual five-minute flow. Cancel opens the regular portal and suppresses a second prompt there, regardless of whether its content script or navigation event arrives first. Cancel can still leave the start page if the worker is unavailable. Pause, missing account data, or revoked access returns to the normal portal without approval.
 

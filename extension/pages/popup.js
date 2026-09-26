@@ -1,4 +1,4 @@
-import { $, api, status, t, localize, initializeLocale } from './ui.js';
+import { $, api, status, t, localize, initializeLocale } from '../ui/ui.js';
 let enabled = false;
 let changing = false;
 function drawToggle() {

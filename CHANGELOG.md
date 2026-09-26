@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.7.3 - 2026-09-25
+
+### Changed
+
+- Organized the service worker, extension pages, and shared interface files into dedicated folders.
+
+### Verification
+
+- Focused controller, interface, localization, theme, and routing tests pass with the static checks.
+
 ## 1.7.2 - 2026-09-20
 
 ### Changed

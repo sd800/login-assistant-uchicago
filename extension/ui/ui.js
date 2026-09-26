@@ -1,4 +1,4 @@
-import { createLanguagePreference } from './core/locale.js';
+import { createLanguagePreference } from '../core/locale.js';
 import { createPageLocalization } from './localization.js';
 
 const language = createPageLocalization(createLanguagePreference(chrome.storage.local, chrome.storage.onChanged, chrome.i18n.getUILanguage()), document);

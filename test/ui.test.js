@@ -6,13 +6,13 @@ import { Element, element as e, documentWith } from './dom-fixture.mjs';
 import { fixture, ui, OKTA, DUO, sender, creation } from './helpers.mjs';
 import { emptyVault, newPin } from '../extension/core/vault.js';
 import { CONFIRM_TEXT } from '../extension/core/policy.js';
-import { PORTAL_URL } from '../extension/core/shortcut.js';
+import { PORTAL_URL, SHORTCUT_PAGE } from '../extension/core/shortcut.js';
 import { createLanguagePreference, translate } from '../extension/core/locale.js';
 
 // Execute the actual page handlers against in-memory Chrome and DOM doubles.
 async function page(name, f = fixture()) {
-  const html = await readFile(new URL('../extension/' + name + '.html', import.meta.url), 'utf8');
-  const source = (await readFile(new URL('../extension/' + (name === 'start' ? 'confirm' : name) + '.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
+  const html = await readFile(new URL('../extension/pages/' + name + '.html', import.meta.url), 'utf8');
+  const source = (await readFile(new URL('../extension/pages/' + (name === 'start' ? 'confirm' : name) + '.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
   const nodes = {};
   for (const [, tag, before, id, after] of html.matchAll(/<([a-z][\w-]*)\b([^>]*)\bid="([^"]+)"([^>]*)>/gi)) {
     const attrs = { id };
@@ -42,7 +42,7 @@ async function page(name, f = fixture()) {
     return !nodes.pin.required || !!nodes.pin.value;
   };
   const context = {
-    URL, location: { href: ui(pagePath).url, replace: target => state.destinations.push(target) }, CONFIRM_TEXT, PORTAL_URL,
+    URL, location: { href: ui(pagePath).url, replace: target => state.destinations.push(target) }, CONFIRM_TEXT, PORTAL_URL, SHORTCUT_PAGE,
     Date: class extends Date { static now() { return f.clock(); } },
     setInterval: () => 1,
     document, $: id => nodes[id], api, t: (value, params = {}) => value.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? ''), bindText: text,
@@ -80,7 +80,7 @@ test('only a new installation opens Settings, not worker startup, updates, or br
   f.api.action = { setTitle: async () => {} };
   f.api.alarms.create = async () => {};
   f.api.runtime.openOptionsPage = async () => { opened++; };
-  const source = (await readFile(new URL('../extension/background.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
+  const source = (await readFile(new URL('../extension/background/service-worker.js', import.meta.url), 'utf8')).replace(/^import .*;\n/gm, '');
   const context = vm.createContext({
     chrome: f.api, createLanguagePreference, translate,
     Controller: class { constructor() { return f.controller; } },

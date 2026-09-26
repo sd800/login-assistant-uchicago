@@ -1,4 +1,4 @@
-import { $, api, status, date, t, bindText, localize, initializeLocale, getLocale, setLocale } from './ui.js';
+import { $, api, status, date, t, bindText, localize, initializeLocale, getLocale, setLocale } from '../ui/ui.js';
 let snapshot;
 const PASSWORD_WILL_BE_SAVED = "Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSWORD_HAS_BEEN_SAVED = "Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";

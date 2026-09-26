@@ -1,4 +1,4 @@
-import { translate, formatDate, formatPasskeyCount } from './core/locale.js';
+import { translate, formatDate, formatPasskeyCount } from '../core/locale.js';
 
 export function createPageLocalization(preference, document) {
   const bindings = new Map();

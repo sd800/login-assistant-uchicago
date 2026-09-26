@@ -1,7 +1,7 @@
-import { $, api, status, bindText, localize, t, initializeLocale } from './ui.js';
-import { CONFIRM_TEXT } from './core/policy.js';
-import { PORTAL_URL } from './core/shortcut.js';
-const inline = new URL(location.href).pathname === '/start.html';
+import { $, api, status, bindText, localize, t, initializeLocale } from '../ui/ui.js';
+import { CONFIRM_TEXT } from '../core/policy.js';
+import { PORTAL_URL, SHORTCUT_PAGE } from '../core/shortcut.js';
+const inline = new URL(location.href).pathname === '/' + SHORTCUT_PAGE;
 let id = new URL(location.href).searchParams.get('id');
 let request;
 let busy = false;

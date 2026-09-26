@@ -143,7 +143,7 @@ export class Controller {
     this.state.prompts[prompt.id] = prompt;
     if (prompt.inline) return prompt;
     const window = await this.api.windows.create({
-      url: this.api.runtime.getURL(`confirm.html?id=${prompt.id}`),
+      url: this.api.runtime.getURL(`pages/confirm.html?id=${prompt.id}`),
       type: 'popup', width: 420, height: prompt.kind === 'login' && !prompt.hasPin ? 390 : 540, focused: true
     });
     prompt.windowId = window.id;
@@ -286,7 +286,7 @@ export class Controller {
     const settings = await this.settings();
     if (message.type.startsWith('SHORTCUT_')) return this.shortcutMessage(message, sender, settings);
     if (message.type.startsWith('UI_')) {
-      this.requireUI(sender, ['settings.html', 'popup.html']);
+      this.requireUI(sender, ['pages/settings.html', 'pages/popup.html']);
       return this.uiMessage(message, sender, settings);
     }
     if (message.type.startsWith('PROMPT_')) return this.promptMessage(message, sender, settings);
@@ -410,7 +410,7 @@ export class Controller {
       return { ...settings, canAutomate: !!selected, username: data.username, hasPassword: !!data.password, hasPin: !!data.pin, credentials: data.credentials.map(publicCredential), history: await this.recentHistory() };
     }
     if (['UI_SAVE', 'UI_SAVE_ACCOUNT', 'UI_SAVE_SETTINGS'].includes(message.type)) {
-      this.requireUI(sender, ['settings.html']);
+      this.requireUI(sender, ['pages/settings.html']);
       const saveAccount = message.type !== 'UI_SAVE_SETTINGS';
       const saveSettings = message.type !== 'UI_SAVE_ACCOUNT';
       if (message.type === 'UI_SAVE_ACCOUNT' && typeof message.username === 'string' &&
@@ -440,7 +440,7 @@ export class Controller {
       return { saved: true };
     }
     if (message.type === 'UI_SETUP_PASSKEY') {
-      this.requireUI(sender, ['settings.html']);
+      this.requireUI(sender, ['pages/settings.html']);
       if (!settings.enabled) throw new Error("Enable the assistant before adding a passkey.");
       if (!data.username || !data.password) throw new Error("Save your account before adding a passkey.");
       if (credentialForAccount(data.credentials, data.username, settings.selectedCredentialId)) return { available: true };
@@ -450,7 +450,7 @@ export class Controller {
       return { asking: true };
     }
     if (message.type === 'UI_PIN') {
-      this.requireUI(sender, ['settings.html']);
+      this.requireUI(sender, ['pages/settings.html']);
       if (data.pin && !await this.checkPin(message.oldPin, data.pin)) throw new Error("The current verification PIN is incorrect.");
       data.pin = message.newPin ? await newPin(message.newPin) : null;
       await this.vault.write(data);
@@ -458,7 +458,7 @@ export class Controller {
       return { saved: true };
     }
     if (message.type === 'UI_DELETE') {
-      this.requireUI(sender, ['settings.html']);
+      this.requireUI(sender, ['pages/settings.html']);
       data.credentials = data.credentials.filter(c => c.id !== message.id);
       await this.vault.write(data);
       await this.selectAccountCredential(data, settings);
@@ -466,7 +466,7 @@ export class Controller {
       return { deleted: true };
     }
     if (message.type === 'UI_CLEAR') {
-      this.requireUI(sender, ['settings.html']);
+      this.requireUI(sender, ['pages/settings.html']);
       await this.vault.write(emptyVault());
       await this.invalidateAll();
       await this.api.storage.local.set({ settings: defaults(), history: [], suggestedDuoOrigin: '', pinGuard: {}, [LANGUAGE_KEY]: null });
@@ -737,7 +737,7 @@ export class Controller {
     } catch (error) { job.result = failure(error.name || 'NotAllowedError', error.message); }
   }
   async promptMessage(message, sender, settings, inline = false) {
-    this.requireUI(sender, inline ? [SHORTCUT_PAGE] : ['confirm.html']);
+    this.requireUI(sender, inline ? [SHORTCUT_PAGE] : ['pages/confirm.html']);
     const id = inline ? message.id : new URL(sender.url).searchParams.get('id');
     if (message.id !== id) throw new Error("This confirmation window does not match the request.");
     const prompt = this.state.prompts[id];

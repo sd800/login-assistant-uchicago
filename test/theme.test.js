@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const css = await readFile(new URL('../extension/ui.css', import.meta.url), 'utf8');
+const css = await readFile(new URL('../extension/ui/ui.css', import.meta.url), 'utf8');
 const roots = [...css.matchAll(/:root\s*\{([^}]+)\}/g)];
 const palettes = roots.map(root => Object.fromEntries(
   [...root[1].matchAll(/(--[\w-]+):\s*(#[a-f\d]{3,6})\s*;/gi)].map(match => [match[1], match[2]])
@@ -72,7 +72,7 @@ test('interactive red stays exactly #800000 in both system appearances', () => {
 
 
 test('status and action icons share a width while preserving SVG proportions', async () => {
-  const html = await readFile(new URL('../extension/popup.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../extension/pages/popup.html', import.meta.url), 'utf8');
   const indicators = [...html.matchAll(/<span[^>]*id="(?:account-saved|passkey-saved)"[^>]*>([\s\S]*?)<\/span>/g)];
   assert.equal(indicators.length, 2);
   for (const [, content] of indicators) {
@@ -94,7 +94,7 @@ test('status and action icons share a width while preserving SVG proportions', a
 
 
 test('the password and PIN storage locks align with their explanatory text', async () => {
-  const html = await readFile(new URL('../extension/settings.html', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../extension/pages/settings.html', import.meta.url), 'utf8');
   assert.match(html, /id="password-help"[^>]*hidden/);
   assert.match(html, /class="credential-lock secure-help-lock" aria-hidden="true"/);
   assert.match(html, /id="pin-storage-help"[^>]*hidden/);
@@ -116,12 +116,12 @@ test('all interface pages use nonnegative language-specific tracking, including 
     assert.ok(['normal', '0.04em'].includes(value.trim()), 'Unexpected tracking override: ' + value);
   }
   for (const page of ['settings', 'popup', 'confirm']) {
-    const html = await readFile(new URL('../extension/' + page + '.html', import.meta.url), 'utf8');
-    assert.match(html, /<link rel="stylesheet" href="ui.css">/);
+    const html = await readFile(new URL('../extension/pages/' + page + '.html', import.meta.url), 'utf8');
+    assert.ok(html.includes('<link rel="stylesheet" href="../ui/ui.css">'));
     assert.match(html, /<strong lang="en-US">UChicago<\/strong>/);
     assert.doesNotMatch(html, /letter-spacing\s*:\s*-/);
   }
-  const settings = await readFile(new URL('../extension/settings.html', import.meta.url), 'utf8');
+  const settings = await readFile(new URL('../extension/pages/settings.html', import.meta.url), 'utf8');
   for (const language of ['en-US', 'zh-CN']) {
     assert.ok(settings.includes('data-language-name="' + language + '" lang="' + language + '"'));
   }

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import assert from 'node:assert/strict';
 import chinese from '../extension/locales/zh-CN.js';
+import { SHORTCUT_PAGE, shortcutRule } from '../extension/core/shortcut.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const extension = join(root, 'extension');
@@ -43,7 +44,9 @@ assert.deepEqual(manifest.optional_host_permissions ?? [], []);
 assert.ok(!manifest.permissions.some(x => ['debugger', 'browsingData', 'nativeMessaging', 'management'].includes(x)));
 assert.ok(manifest.permissions.includes('cookies'));
 assert.ok(!manifest.externally_connectable);
-assert.deepEqual(manifest.web_accessible_resources, [{ resources: ['start.html'], matches: ['<all_urls>'] }]);
+assert.deepEqual(manifest.web_accessible_resources, [{ resources: [SHORTCUT_PAGE], matches: ['<all_urls>'] }]);
+assert.equal(shortcutRule().action.redirect.extensionPath, '/' + SHORTCUT_PAGE);
+assert.ok(files.includes(join(extension, SHORTCUT_PAGE)), `Missing shortcut page: ${SHORTCUT_PAGE}`);
 assert.equal(manifest.incognito, 'split');
 assert.ok(manifest.permissions.includes('declarativeNetRequestWithHostAccess'));
 for (const file of [manifest.background.service_worker, manifest.options_page, manifest.action.default_popup, ...manifest.content_scripts.flatMap(s => s.js)]) {

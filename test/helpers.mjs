@@ -5,7 +5,7 @@ import { Controller } from '../extension/core/controller.js';
 export const DUO = 'https://api-test123.duosecurity.com';
 export const OKTA = 'https://uchicago.okta.com';
 export const EXTENSION_ID = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
-export const ui = (page = 'settings.html') => ({ id: EXTENSION_ID, url: `chrome-extension://${EXTENSION_ID}/${page}` });
+export const ui = (page = 'settings.html') => ({ id: EXTENSION_ID, url: `chrome-extension://${EXTENSION_ID}/pages/${page}` });
 export const sender = (origin = OKTA, tabId = 7, documentId = 'okta-document') => ({ id: EXTENSION_ID, url: `${origin}/login`, origin, tab: { id: tabId }, frameId: 0, documentId });
 export function creation(overrides = {}) {
   return { rp: { id: 'duosecurity.com', name: 'Duo' }, user: { id: randomId(16), name: 'test-student', displayName: 'Test Student' }, challenge: randomId(), pubKeyCredParams: [{ type: 'public-key', alg: -7 }], authenticatorSelection: { userVerification: 'discouraged', residentKey: 'preferred' }, extensions: { credProps: true }, ...overrides };

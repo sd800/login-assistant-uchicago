@@ -14,9 +14,9 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.7.2
+Current version: 1.7.3
 
-Release date: September 20, 2026
+Release date: September 25, 2026
 
 ## Installation
 
@@ -151,7 +151,7 @@ npm run package                # Static checks and packaging
 
 For a full test run, use `npm run test:all`. Packaging creates a source folder, ZIP, and SHA-256 checksum in `dist/`; it does not run the test suites again.
 
-The loadable extension is in `extension/`, synthetic tests are in `test/`, and checks and packaging scripts are in `scripts/`.
+The loadable extension is in `extension/`, synthetic tests are in `test/`, and checks and packaging scripts are in `scripts/`. The extension manifest is at the root of `extension/`; `background/` holds the service worker, `pages/` the extension pages, `ui/` shared interface files, `content/` site adapters, `core/` authentication logic, and `icons/` and `locales/` their respective assets.
 
 Further reading: [Architecture](docs/DESIGN.md) · [Testing guide](docs/QA.md) · [Icon artwork](docs/ICON.md) · [Changelog](CHANGELOG.md)
 

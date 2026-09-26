@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { LOCALE, LANGUAGE_KEY, normalizeLocale, formatDate, formatPasskeyCount, translate, createLanguagePreference } from '../extension/core/locale.js';
 import { CONFIRM_TEXT, validateAccount } from '../extension/core/policy.js';
 import chinese from '../extension/locales/zh-CN.js';
-import { createPageLocalization } from '../extension/localization.js';
+import { createPageLocalization } from '../extension/ui/localization.js';
 
 test('date formatting uses US month order and a 12-hour clock with a time zone', () => {
   assert.equal(LOCALE, 'en-US');
@@ -28,8 +28,8 @@ test('passkey counts use natural US singular and plural forms', () => {
 
 test('sign-in confirmation has consistent text, controls, and keyboard hints', async () => {
   assert.equal(CONFIRM_TEXT, 'Sign in to UChicago with saved account?');
-  const html = await readFile(new URL('../extension/confirm.html', import.meta.url), 'utf8');
-  const script = await readFile(new URL('../extension/confirm.js', import.meta.url), 'utf8');
+  const html = await readFile(new URL('../extension/pages/confirm.html', import.meta.url), 'utf8');
+  const script = await readFile(new URL('../extension/pages/confirm.js', import.meta.url), 'utf8');
   assert.match(html, /id="cancel"[^>]*>Cancel<\/button>/);
   assert.match(html, /id="approve"[^>]*disabled[^>]*>Confirm<\/button>/);
   assert.match(script, /bindText\(\$\('approve'\), 'Confirm'\)/);
@@ -73,10 +73,10 @@ test('the translation catalog preserves parameters and localizes Settings', () =
 });
 
 test('all static interface copy is localized and language choices use stable locale values', async () => {
-  const css = await readFile(new URL('../extension/ui.css', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../extension/ui/ui.css', import.meta.url), 'utf8');
   assert.match(css, /body\[data-locale-pending\]\s*\{\s*visibility:\s*hidden;\s*\}/);
   for (const page of ['settings.html', 'popup.html', 'confirm.html']) {
-    const html = await readFile(new URL('../extension/' + page, import.meta.url), 'utf8');
+    const html = await readFile(new URL('../extension/pages/' + page, import.meta.url), 'utf8');
     assert.match(html, /<body\b[^>]*\bdata-locale-pending(?:\s|>)/, 'The initial HTML must hide untranslated content.');
     assert.match(html, /<title data-i18n="[^"]+">UChicago<\/title>/, 'Use a neutral tab title until localization is ready.');
     for (const match of html.matchAll(/<([a-z][\w-]*)\b([^<>]*)>([^<>]+)<\/\1>/gi)) {
@@ -86,11 +86,11 @@ test('all static interface copy is localized and language choices use stable loc
       assert.ok(Object.hasOwn(chinese, value), 'Missing translation: ' + value);
     }
   }
-  const settings = await readFile(new URL('../extension/settings.html', import.meta.url), 'utf8');
+  const settings = await readFile(new URL('../extension/pages/settings.html', import.meta.url), 'utf8');
   assert.match(settings, /select id="language" aria-describedby="language-help"/);
   assert.match(settings, /option value="en-US" data-language-name="en-US"/);
   assert.match(settings, /option value="zh-CN" data-language-name="zh-CN"/);
-  const popup = await readFile(new URL('../extension/popup.html', import.meta.url), 'utf8');
+  const popup = await readFile(new URL('../extension/pages/popup.html', import.meta.url), 'utf8');
   assert.match(popup, /id="settings"[^>]*aria-label="Settings"[^>]*data-i18n-aria-label="Settings"/);
 });
 
@@ -369,8 +369,8 @@ test('live localization updates labels and statuses without disturbing drafts or
 });
 
 test('settings labels and privacy help are localized and the popup stays compact', async () => {
-  const popup = await readFile(new URL('../extension/popup.html', import.meta.url), 'utf8');
-  const settings = await readFile(new URL('../extension/settings.html', import.meta.url), 'utf8');
+  const popup = await readFile(new URL('../extension/pages/popup.html', import.meta.url), 'utf8');
+  const settings = await readFile(new URL('../extension/pages/settings.html', import.meta.url), 'utf8');
   assert.doesNotMatch(popup, /Stored on this device|Independent project/);
   assert.equal(Object.hasOwn(chinese, 'Stored on this device · Independent project'), false);
   assert.match(settings, /id="save-account"[^>]*>Save<\/button>/);

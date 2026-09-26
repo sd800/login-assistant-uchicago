@@ -15,7 +15,7 @@ This is the identity of an independent project, not an official university mark.
 | [48px icon](../extension/icons/icon-48.png) | 48 x 48 | Extension list and toolbar |
 | [128px icon](../extension/icons/icon-128.png) | 128 x 128 | Extension identity and page headers |
 
-The master artwork is raster PNG, not an editable vector. Its maroon background includes raster color variations and antialiased edges. The interface's button colors are defined separately in [ui.css](../extension/ui.css).
+The master artwork is raster PNG, not an editable vector. Its maroon background includes raster color variations and antialiased edges. The interface's button colors are defined separately in [ui.css](../extension/ui/ui.css).
 
 ## Displaying the icon
 
