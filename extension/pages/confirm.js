@@ -8,7 +8,7 @@ let request;
 let busy = false;
 function approvalUnavailable() {
   return !request || request.fallbackOnly || request.deadline <= Date.now() ||
-    (request.requireUV && !request.hasPin && request.authMode !== 'device');
+    request.requireUV && request.authMode !== 'device';
 }
 async function decide(action) {
   if (busy) return;
@@ -21,12 +21,10 @@ async function decide(action) {
       (['login', 'setup'].includes(request.kind) || request.requireUV);
     const deviceSecret = deviceRequired ? await verifyDevice(request.deviceCredentialId, request.prfSalt) : undefined;
     const result = await api({ type: inline ? 'SHORTCUT_DECIDE' : 'PROMPT_DECIDE', id, action,
-      pin: $('pin').value, deviceSecret, deviceCredentialId: deviceRequired ? request.deviceCredentialId : undefined,
+      deviceSecret, deviceCredentialId: deviceRequired ? request.deviceCredentialId : undefined,
       credentialId: request?.credentialId || $('choices').value });
-    $('pin').value = '';
     if (inline && result.target) location.replace(result.target); else window.close();
   } catch (error) {
-    $('pin').value = '';
     if (inline && action === 'cancel') { location.replace(PORTAL_URL); return; }
     status($('status'), error.message, true);
     $('approve').disabled = approvalUnavailable();
@@ -62,7 +60,7 @@ try {
   request = await api({ type: inline ? 'SHORTCUT_OPEN' : 'PROMPT_GET', id });
   if (inline && request.target) { location.replace(request.target); } else {
   id = request.id || id;
-  bindText($('title'), request.kind === 'setup' ? "Add a passkey for one-click sign-in?" : request.kind === 'repair' ? "Add a replacement passkey?" : request.fallbackOnly ? "Passkey unavailable" : request.kind === 'login' ? CONFIRM_TEXT : request.kind === 'create' ? "Add a passkey" : request.credentialId && request.requireUV ? "Verify your identity" : "Use a saved Duo passkey?");
+  bindText($('title'), request.kind === 'setup' ? "Add a passkey for one-click sign-in?" : request.kind === 'repair' ? "Add a replacement passkey?" : request.fallbackOnly ? "Choose how to continue" : request.kind === 'login' ? CONFIRM_TEXT : request.kind === 'create' ? "Add a passkey" : request.credentialId && request.requireUV ? "Verify your identity" : "Use a saved Duo passkey?");
   if (request.kind === 'login') {
     $('sign-in-explanation').hidden = false;
     bindText($('sign-in-explanation'), "Confirm to log in to uchicago.edu.");
@@ -83,27 +81,21 @@ try {
   }
   $('approve').hidden = request.fallbackOnly === true;
   $('enroll').hidden = !request.allowEnrollment || request.kind === 'repair';
-  $('pin-field').hidden = request.authMode === 'device' || !request.hasPin || request.fallbackOnly === true ||
-    (['pin', 'pin-legacy'].includes(request.authMode) ? !['login', 'setup'].includes(request.kind) && !request.requireUV :
-      ['setup', 'repair'].includes(request.kind) || request.kind === 'login' && request.automaticDuo === false);
-  if (['pin', 'pin-legacy'].includes(request.authMode) && ['login', 'setup'].includes(request.kind) || request.requireUV && request.authMode !== 'device') {
-    bindText($('pin-label'), 'Verification passphrase'); $('pin').required = true;
-  }
   if (request.notice) {
     $('notice').hidden = false;
     bindText($('notice'), request.notice);
-  } else if (request.requireUV && !request.hasPin) {
+  } else if (request.requireUV && request.authMode !== 'device') {
     $('notice').hidden = false;
-    bindText($('notice'), 'Duo requires identity verification. Use another passkey provider or set a verification passphrase in settings and try again.');
+    bindText($('notice'), 'Set up Verify with your device in Settings to continue.');
   } else if (request.kind === 'setup') {
     $('notice').hidden = false;
-    bindText($('notice'), "The assistant will sign in with your saved account and help you add a Duo passkey. If Duo asks you to verify your identity, complete that step to continue.");
+    bindText($('notice'), "The assistant signs in with your saved account and guides Duo passkey setup. Complete the identity step shown by Duo to continue.");
   } else if (request.kind === 'create') {
     $('notice').hidden = false;
     bindText($('notice'), "The passkey will be saved here. Adding a passkey is necessary for the one-click account sign-in feature.");
   }
   bindText($('consent-help'), request.kind === 'login' ? "Your confirmation covers automatic passkey verification for this sign-in in this tab." : request.kind === 'create' ? "Confirming allows this page to complete this passkey request." : "Confirming allows this page to complete this passkey request once.");
-  if (request.kind === 'login' && request.automaticDuo === false) bindText($('consent-help'), "The assistant will fill your saved account on Okta. Complete Duo verification yourself if asked.");
+  if (request.kind === 'login' && request.automaticDuo === false) bindText($('consent-help'), "The assistant fills your saved account on Okta. Complete Duo verification with your preferred method.");
   if (request.fallbackOnly) {
     bindText($('consent-help'), "Choose how to continue. Adding a new passkey keeps your existing local keys.");
     bindText($('keyboard-help'), "Esc to cancel. Use Tab to choose an action.");
@@ -112,10 +104,10 @@ try {
   if (request.kind === 'create') bindText($('keyboard-help'), "Enter / Space to continue; Esc to cancel. Focused controls keep their usual keys.");
   $('fallback').hidden = ['login', 'repair', 'setup'].includes(request.kind);
   $('approve').disabled = approvalUnavailable();
-  setInterval(() => { if (Date.now() >= request.deadline) { $('approve').disabled = true; status($('status'), inline ? "This request has expired. Reload this page to try again." : "This request has expired. Close this window and try again on the sign-in page.", true); } }, 1000);
+  setInterval(() => { if (Date.now() >= request.deadline) { $('approve').disabled = true; status($('status'), inline ? "Reload this page to start a fresh sign-in request." : "Close this window and start a fresh request from the sign-in page.", true); } }, 1000);
   }
 } catch (error) {
   const expired = error.message === "This confirmation has expired. Return to the sign-in page and try again.";
-  bindText($('title'), expired ? "Request expired" : "Unable to load confirmation");
+  bindText($('title'), expired ? "Start a fresh request" : "Reload confirmation");
   status($('status'), error.message, true);
 }

@@ -1,7 +1,7 @@
 import { b64, unb64, utf8 } from './encoding.js';
 
 const AAD = utf8('UChicago Login Assistant vault v1');
-export const emptyVault = () => ({ version: 1, username: '', password: '', credentials: [], pin: null });
+export const emptyVault = () => ({ version: 1, username: '', password: '', credentials: [] });
 
 export async function seal(value, key) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -17,14 +17,14 @@ export class Vault {
   constructor(repository, session = null) { this.repository = repository; this.session = session; }
   async protection() {
     const record = await this.repository.get('v2');
-    if (record) return { mode: record.mode, hasPin: !!record.pin, hasAccount: !!record.meta?.hasAccount,
+    if (record) return { mode: record.mode, hasAccount: !!record.meta?.hasAccount,
       hasPassword: !!record.meta?.hasPassword, hasPasskeys: !!record.meta?.hasPasskeys,
       credentialId: record.device?.credentialId || '', prfSalt: record.device?.prfSalt || '',
       locked: !await this.sessionKey(record) };
     const data = (await this.load()).data;
-    return { mode: data.pin ? 'pin-legacy' : 'none', hasPin: !!data.pin,
+    return { mode: 'none',
       hasAccount: !!data.username, hasPassword: !!data.password,
-      hasPasskeys: !!data.credentials.length, credentialId: '', locked: !!data.pin };
+      hasPasskeys: !!data.credentials.length, credentialId: '', locked: false };
   }
   async sessionKey(record) {
     const saved = this.session ? (await this.session.get('vaultUnlock')).vaultUnlock : null;
@@ -61,20 +61,6 @@ export class Vault {
       await this.repository.set('v2', record);
     } else await this.repository.set('payload', await seal(data, key));
   }
-  async unlockPin(pin) {
-    const record = await this.repository.get('v2');
-    if (!record?.pin) throw new Error('Set a verification passphrase in settings.');
-    const wrapping = await pinKey(pin, unb64(record.pin.salt), record.pin.iterations);
-    try {
-      const raw = await unwrap(record.pin.wrapped, wrapping);
-      await this.remember(record, raw);
-      raw.fill(0);
-      return true;
-    } catch (error) {
-      if (error.name === 'OperationError') return false;
-      throw error;
-    }
-  }
   async unlockDevice(secret, credentialId) {
     const record = await this.repository.get('v2');
     if (!record?.device || record.device.credentialId !== credentialId) throw new Error('Device verification is not configured.');
@@ -106,44 +92,13 @@ export class Vault {
     await this.remember(record, raw);
     raw.fill(0);
   }
-  async setPin(pin) {
-    const { record, raw, data } = await this.prepareProtected();
-    if (record.mode === 'device') throw new Error('Turn off device verification before changing the passphrase.');
-    if (pin) {
-      const salt = crypto.getRandomValues(new Uint8Array(16));
-      const iterations = 600_000;
-      record.pin = { salt: b64(salt), iterations, wrapped: await wrap(raw, await pinKey(pin, salt, iterations)) };
-      data.pin = await newPin(pin);
-      record.mode = 'pin';
-      await this.saveProtected(record, raw, data);
-    } else {
-      data.pin = null;
-      delete record.pin;
-      await this.restoreLegacy(data); raw.fill(0);
-    }
-  }
   async setDevice(credentialId, secret, prfSalt) {
     const { record, raw, data } = await this.prepareProtected();
     record.device = { credentialId, prfSalt, wrapped: await wrap(raw, await deviceKey(secret)) };
     delete record.pin;
+    delete data.pin;
     record.mode = 'device';
     await this.saveProtected(record, raw, data);
-  }
-  async switchToPin(pin) {
-    await newPin(pin);
-    const { record, raw, data } = await this.prepareProtected();
-    delete record.device;
-    const salt = crypto.getRandomValues(new Uint8Array(16));
-    const iterations = 600_000;
-    record.pin = { salt: b64(salt), iterations, wrapped: await wrap(raw, await pinKey(pin, salt, iterations)) };
-    data.pin = await newPin(pin);
-    record.mode = 'pin';
-    await this.saveProtected(record, raw, data);
-  }
-  async restoreLegacy(data) {
-    const key = await crypto.subtle.generateKey({ name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-    await this.repository.replaceLegacy(key, await seal(data, key));
-    await this.forget();
   }
   async clear() { await this.repository.clear(); await this.forget(); }
 }
@@ -207,11 +162,6 @@ export function indexedRepository() {
 function metadata(data) {
   return { hasAccount: !!data.username, hasPassword: !!data.password, hasPasskeys: !!data.credentials.length };
 }
-async function pinKey(pin, salt, iterations) {
-  const material = await crypto.subtle.importKey('raw', utf8(pin), 'PBKDF2', false, ['deriveKey']);
-  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, material,
-    { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
-}
 async function deviceKey(secret) {
   return crypto.subtle.importKey('raw', unb64(secret, { min: 32, max: 32 }), 'AES-GCM', false, ['encrypt', 'decrypt']);
 }
@@ -222,22 +172,4 @@ async function wrap(raw, key) {
 async function unwrap(record, key) {
   return new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(record.iv, { min: 12, max: 12 }) },
     key, unb64(record.data, { min: 48, max: 48 })));
-}
-
-export async function newPin(pin) {
-  if (typeof pin !== 'string' || pin.length < 6 || pin.length > 128) throw new Error("Use 6–128 characters for your verification passphrase.");
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  return { salt: b64(salt), hash: b64(await pinHash(pin, salt)), iterations: 310_000 };
-}
-async function pinHash(pin, salt) {
-  const key = await crypto.subtle.importKey('raw', utf8(pin), 'PBKDF2', false, ['deriveBits']);
-  return new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: 310_000 }, key, 256));
-}
-export async function verifyPin(pin, record) {
-  if (!record || typeof pin !== 'string' || !pin || pin.length > 128) return false;
-  const a = await pinHash(pin, unb64(record.salt));
-  const b = unb64(record.hash);
-  let diff = a.length ^ b.length;
-  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
-  return diff === 0;
 }

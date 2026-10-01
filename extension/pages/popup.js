@@ -40,5 +40,5 @@ $('toggle').addEventListener('click', async event => {
   }
   finally { changing = false; $('toggle').disabled = false; }
 });
-try { await initializeLocale(); } catch { status($('status'), 'Unable to load the saved language. Reload this page to try again.', true); }
+try { await initializeLocale(); } catch { status($('status'), 'Reload this window to restore the saved language.', true); }
 try { await load(); } catch (error) { status($('status'), error.message, true); }

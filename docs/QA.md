@@ -4,7 +4,7 @@ This guide covers local checks and verification in Chrome. Install the extension
 
 ## Run local checks
 
-Use Node.js 22 or later. The tests and checker use Node's built-in modules and need no dependency installation.
+Use Node.js 22 or later. The tests and checker run with Node's built-in modules.
 
 ```sh
 npm run check
@@ -45,7 +45,7 @@ node --test --test-name-pattern='a failed account save' test/ui.test.js
 | `bridge` | WebAuthn request transfer, cancellation, expiry, and native fallback |
 | `dom` | Fixed entry navigation, Okta form recognition, background wake events, delayed page content, multilingual Duo controls, and excluded forms |
 
-Fixtures use synthetic accounts, requests, clocks, and browser/DOM substitutes. These tests do not run a real Chrome session or contact Okta or Duo.
+Fixtures use synthetic accounts, requests, clocks, and browser/DOM substitutes. Live-service verification takes place in the Chrome checks below.
 
 ## Check the interface in Chrome
 
@@ -53,10 +53,9 @@ Use a separate Chrome profile for development when practical. Load `extension/` 
 
 - Open Settings, the popup, and a confirmation window in both interface languages and system appearances. Check readable text, narrow layouts, visible focus, and labels on icon controls.
 - Refresh Settings after choosing a language. The first visible text should use that language, and open windows should update when the choice changes.
-- Save an account or verification passphrase while leaving drafts in other fields. A passphrase should require a matching second entry before saving and show a green check once saved. Changing it should not show a current-passphrase field. Remove it and verify that the account and passkeys remain. Enabling device verification should show its own green check after Chrome's system prompt; turning it off should switch to passphrase verification. A device without WebAuthn PRF support must not be enabled. Verify that a usable account key forces automatic verification, including after reloading an older manual preference. The Add a passkey button and its explanation must be hidden while a usable key exists. Deleting or invalidating the last usable key must restore manual verification and the setup action; pending or other-account keys must not hide it. Setup must ask before clearing scoped login cookies, must retry a transient rewrite and must not navigate if clearing still fails, and must open one preapproved student sign-in tab after confirmation. It enables automatic verification only after the new device is confirmed in Duo. Check the green check, yellow warning, and account-lock icons.
+- Set up Verify with your device and check that the green confirmation appears. Confirm that unsupported WebAuthn PRF devices cannot enable it, and that existing unprotected account data remains after setup. Save an account and verify that a usable account passkey forces automatic verification. The Add a passkey button and its explanation must be hidden while a usable key exists. Deleting or invalidating the last usable key must restore manual verification and the setup action. Check the green check, yellow warning, and account-lock icons.
 - Test the power control, retry action, and saved-data indicators. Indicators describe local storage, not registration or sign-in success.
-- In a confirmation window, check Enter, Space, Escape, focused controls, passphrase validation, device verification, cancellation, and expired requests.
-- Check local deletion after fifteen consecutive incorrect passphrases only in a disposable profile. Verify that five and ten errors trigger separate five-minute pauses, a correct entry resets the count, and canceled device prompts do not increment it.
+- In a confirmation window, check Enter, Space, Escape, focused controls, device verification, cancellation, and expired requests.
 
 For cross-platform changes, repeat the relevant checks in desktop Chrome on each supported target operating system.
 
@@ -80,6 +79,6 @@ Check fresh sign-ins with a usable account key, no matching key, a deleted or in
 npm run package
 ```
 
-Packaging runs static checks and writes a source directory, ZIP archive, and SHA-256 checksum to `dist/`. It does not run the test suites. The ZIP includes the extension, documentation, scripts, and tests; load its `extension/` directory in Chrome.
+Packaging runs static checks and writes a source directory, ZIP archive, and SHA-256 checksum to `dist/`. Run `npm run test:all` first when preparing a fully tested archive. The ZIP includes the extension, documentation, scripts, and tests; load its `extension/` directory in Chrome.
 
 Before distributing an archive, extract it into a separate folder and check its manifest version, icon assets, and Settings page.

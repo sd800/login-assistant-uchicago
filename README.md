@@ -4,54 +4,52 @@
 
 Login Assistant for UChicago is a personal Chrome extension that makes your UChicago account sign-in simpler and faster.
 
-Signing in a school account should be a simple and quick process. Meanwhile, at the University of Chicago, the process can involve several steps across Okta and Duo. Users often need to enter their username and password on separate pages, wait through multiple redirects, select a verification method, and complete Duo authentication using a fingerprint or one-time code. Because this process is repeated frequently when accessing essential services such as my.UChicago and Canvas, reducing these repetitive interactions can make everyday access more efficient.
+UChicago services use Okta and Duo across several sign-in pages. Opening my.UChicago, Canvas, and other school services can therefore involve repeated account entry, redirects, verification-method selection, and Duo authentication.
 
-This Chrome extension streamlines the UChicago account sign-in flow with user approval each time. By automatically handling the repetitive steps in the process, it makes signing in faster and more convenient while leaving authentication under the user's control.
+This extension brings those steps into one guided flow. You approve each sign-in, and the assistant completes the recognized account and Duo steps so you can reach the service faster.
 
 - Supports my.UChicago, Canvas, and third-party applications that use UChicago account sign-in.
-- Automatically completes the UChicago account sign-in flow each time you authorize a sign-in (account and passkey setup needed beforehand).
+- Automatically completes the UChicago account sign-in flow each time you authorize a sign-in after account and passkey setup.
 - Securely stores account information and passkeys on your device using industry-standard encryption.
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.8.3
-
-Release date: October 1, 2026
-
 ## Installation
 
-Requires desktop Google Chrome 122 or later. No server, build step, or dependency installation is needed to use the extension.
+Requires desktop Google Chrome 122 or later. The extension runs directly from the included `extension/` folder.
 
 1. Download or clone this repository, or extract a project ZIP, into a permanent folder.
 2. Open `chrome://extensions` and enable **Developer mode**.
 3. Choose **Load unpacked** and select the **extension** folder inside the project.
 4. **Settings** opens automatically after installation. You can reopen it from **UChicago Login Assistant** in Chrome's Extensions menu.
 
-To update, replace the project files in the same folder, choose **Reload** on `chrome://extensions`, and refresh open sign-in pages. Do not uninstall as an update step: uninstalling removes this extension's saved account information and passkeys.
+To update, replace the project files in the same folder, choose **Reload** on `chrome://extensions`, and refresh open sign-in pages. This preserves the saved account information and passkeys in the existing installation. Uninstalling removes the extension's locally saved data.
 
 ## Set up
 
-### Save your account and choose an authorization method
+Complete the following steps in **Settings**. Your account details and passkey private keys are protected by local encryption and used only for sign-ins you authorize.
 
-In **Settings → Account**, enter your **CNetID or UCMEDID** and **Password**, then choose **Save**. Enter these details in the extension; it does not import passwords from Chrome's password manager. Keep the assistant enabled using the power icon in its popup.
+### Protect your saved data
 
-In **Settings → Authorization step**, use **Device verification** or set a **Verification passphrase**.
+Open **Authorization step** and choose **Verify with your device**. Chrome presents Touch ID, Windows Hello, or your device's sign-in method. A green check confirms that protection is active.
 
-If you choose **Device verification** (recommended), Chrome uses its system prompt, such as Touch ID or Windows Hello. Chrome chooses the available method. A green check shows when device verification is enabled. To turn it off, enter and confirm a new passphrase, then complete Chrome's device prompt. The device must support deriving an encryption key from its credential; otherwise it cannot be enabled.
+The extension creates a random local encryption key and encrypts saved account details and passkey private keys with industry-standard AES-256-GCM. WebAuthn PRF binds protection of that encryption key to the device credential created for this extension. Fingerprint and face data remain inside your device's security system.
 
-To set or change a **Verification passphrase**, enter 6–128 characters and choose **Save**, then enter the same passphrase again and choose **Confirm**. The passphrase is saved only after the entries match. A green check shows when it is set.
+### Save your account
+
+Open **Account**, enter your **CNetID or UCMEDID** and **Password**, and choose **Save**. Enter these details in the extension. They are encrypted on this device and become available only within a sign-in you explicitly confirm.
 
 ### Add a Duo passkey
 
-After you save an account without a usable passkey, the assistant asks whether to add one for one-click sign-in. Confirm that prompt, or choose **Settings → Duo & passkeys → Add a passkey**. The assistant starts a fresh student sign-in for setup.
+After you save your account, confirm the prompt to add a passkey for one-click sign-in. You can also begin from **Settings → Duo & passkeys → Add a passkey**. The assistant starts a fresh student sign-in and guides the registration flow.
 
-1. The assistant opens Duo's options menu and chooses **Manage devices**. If Duo asks you to verify your identity, use an existing method and finish that step. The assistant then continues.
+1. The assistant opens Duo's options menu and chooses **Manage devices**. Complete the identity check presented by Duo, and the assistant continues automatically.
 2. In device management, the assistant chooses **Add a device → Security key → Continue**. In the extension's **Add a passkey** window, choose **Continue**.
 3. When Duo's device list shows the new security key, the assistant chooses **Back to login** and then **Security Key**. The key is ready for automatic verification after Duo completes registration.
 
-The extension creates a new passkey locally and registers its public key with Duo. It does not import passkeys from Chrome, your operating system, or a physical security key. A key appearing in the extension alone does not prove that Duo completed registration. Keep another Duo verification method.
+The extension generates a unique passkey key pair on this device. Its private key is protected locally with AES-256-GCM, and Duo registers the corresponding public key. During an approved sign-in, the private key signs Duo's challenge locally and remains on your device.
 
-No Duo address needs to be entered. Allow the extension to access Duo pages in Chrome. Outside a sign-in you approved through the assistant, Duo passkey requests use Chrome's normal provider.
+Chrome's site access lets the assistant handle recognized Duo pages within the sign-in flow you approved. Keep another Duo verification method available for account recovery and device management.
 
 ## Sign in
 
@@ -70,11 +68,11 @@ The assistant asks:
 
 Choose **Confirm** to continue or **Cancel** to stop. On my.UChicago, the prompt opens in the current tab and Cancel opens the regular portal. **Enter** or **Space** confirms when focus is on the page or Confirm button; **Esc** cancels. Focused inputs and controls keep their usual keyboard behavior.
 
-Complete the selected authorization step after confirming. The approval covers this sign-in in the current tab for up to five minutes, including supported redirects. With a usable saved passkey, the assistant selects **Security Key** in Duo and uses that passkey without asking you to confirm it again. Duo may remember this browser and skip verification; Duo decides when verification is needed. If Duo asks you to verify your identity separately, complete that step yourself.
+Verify with your device after confirming. The approval covers this sign-in in the current tab for up to five minutes, including supported redirects. With a usable saved passkey, the assistant selects **Security Key** in Duo and uses that passkey within the same approval. Duo manages trusted-browser status and presents an identity check whenever one is required; complete the check shown on the Duo page.
 
-You can switch to another tab while supported sign-in steps continue in the approved tab. After Duo verification, if Duo asks **Is this your device?**, the assistant selects **Yes, this is my device**. An existing session may also return directly to the application without visiting Duo.
+You can switch to another tab while supported sign-in steps continue in the approved tab. After Duo verification, the assistant selects **Yes, this is my device** when Duo presents that screen. An active school session returns directly to the application.
 
-Start from the application you want to access, not the `uchicago.okta.com` account management home page. The referring application and destination need not end in `uchicago.edu`. A new sign-in requires a new confirmation.
+Begin from the application you want to access. The assistant supports school and third-party applications across different domains and recognizes the actual UChicago Okta sign-in pages they open. Each new sign-in receives its own confirmation.
 
 ### Controls and saved passkeys
 
@@ -84,24 +82,22 @@ Start from the application you want to access, not the `uchicago.okta.com` accou
 | Circular arrow | Ask again on the current supported page after a canceled or stopped attempt |
 | Settings icon | Manage the account, passkeys, authorization step, language, and local data |
 
-A card icon in the popup means an account and password are saved. A key icon means a local passkey exists; it does not prove Duo has accepted its registration. Choose the interface language at the top of **Settings**; changes apply to extension windows immediately and persist after refresh. The appearance follows your system theme.
+A card icon in the popup confirms that an account and password are saved. A key icon identifies a locally protected passkey; Duo device management displays its registration status. Choose the interface language at the top of **Settings**; changes apply to extension windows immediately and persist after refresh. The appearance follows your system theme.
 
-**Duo & passkeys** shows **Automatic verification** when the saved account has a usable passkey and **Manual verification** when it does not. The Add a passkey button is hidden while a usable key exists. Without one, complete Duo verification yourself. Saved passkeys list their account and added date and have a delete control.
+**Duo & passkeys** shows **Automatic verification** when the saved account has a usable passkey. **Manual verification** lets you use your preferred Duo method, and adding a passkey activates automatic verification. Saved passkeys list their account and added date and include a delete control. The setup action stays focused on the current account and appears when it is ready for a passkey.
 
-A key Duo explicitly rejects is marked **Invalid** and excluded from automatic use. The assistant offers to add a replacement. Canceling leaves this sign-in for manual Duo verification; the next sign-in opens device management and asks again when Duo is ready to create the replacement. Timeouts, cancellations, and unmatched requests do not mark a key invalid. Invalid or replaced local keys remain until you delete them or clear local data.
+A key explicitly rejected by Duo is marked **Invalid** and set aside from automatic verification. The assistant guides a replacement through Duo device management. Choosing your preferred Duo method completes the current sign-in, and the next approved sign-in resumes replacement setup. The status is based on Duo's explicit response, while timeouts, cancellations, and unmatched requests preserve the current key state. Every local key remains under your control until you delete it or clear local data.
 
-If a passkey request is incompatible, choose **Use another passkey provider** when offered, or use another Duo method. Hardware attestation, platform-only authenticator requests, and some WebAuthn features are not supported. Duo's policies determine which credentials it accepts.
-
-The verification passphrase differs from your school password and device PIN. Five consecutive incorrect entries pause checks for five minutes; after 15 consecutive incorrect entries, the extension deletes its saved local data. A successful entry resets the count. Canceling a device verification prompt does not count as an incorrect passphrase.
+For a request that requires another authenticator capability, choose **Use another passkey provider** or select another Duo method. The built-in provider handles local ES256 passkeys and compatible Duo WebAuthn requests, while Chrome handles provider-specific capabilities. Duo applies its credential policy to every registration and verification.
 
 ## Privacy and security
 
-Your saved username, password, and passkey private keys are encrypted in this Chrome profile with AES-256-GCM using the browser's Web Crypto API. The extension generates a random encryption key. A verification passphrase protects that key through PBKDF2-SHA-256; supported device verification uses WebAuthn PRF. The passphrase is not saved as readable text. Device verification or a long, unique verification passphrase provides the strongest local protection this extension offers. If neither authorization method is active, the data remains encrypted, but sign-in no longer requires that additional verification step.
+Your saved username, password, and passkey private keys are encrypted in this Chrome profile with AES-256-GCM using the browser's Web Crypto API. The extension generates a random encryption key, and device verification uses WebAuthn PRF to protect it. Chrome completes Touch ID, Windows Hello, or the corresponding system sign-in method inside the device security system. Biometric data remains there.
 
 - Each sign-in requires your confirmation. Approval is limited to the current tab and account for up to five minutes. Before using saved credentials, the extension checks the current page, HTTPS origin, and approved sign-in flow.
-- Your password is filled only on recognized UChicago Okta sign-in pages. Passkeys are generated locally: Duo registers their public keys, while private keys stay on your device and sign only compatible requests in the approved Duo flow. Intermediate and destination sites receive no account details from the extension.
-- No developer server receives your data. The extension has no analytics, advertising, or cloud sync, and it does not read Chrome's password manager. During confirmed passkey setup, it clears scoped school sign-in cookies to start a fresh session; it does not save their values.
-- Recent activity keeps at most 20 entries from the past 24 hours, without passwords, private keys, or full sign-in URLs. Older entries are deleted automatically.
+- Account details stay confined to recognized UChicago Okta sign-in pages. Passkeys are generated locally: Duo registers their public keys, while private keys stay on your device and sign compatible requests within the approved Duo flow.
+- All processing stays on your device. The extension operates independently of analytics, advertising, cloud sync, and developer data servers. Confirmed passkey setup clears scoped school sign-in cookies to start a fresh session and immediately discards their values.
+- Recent activity contains status and time information only, with at most 20 entries from the past 24 hours. Older entries are deleted automatically.
 
 ### Permissions
 
@@ -118,29 +114,29 @@ Your saved username, password, and passkey private keys are encrypted in this Ch
 | `https://portal.uchicago.edu/*` | Start the student sign-in from the portal |
 | `https://courses.uchicago.edu/*` | Start Canvas sign-in from the Courses homepage |
 | `*://*.ais.uchicago.edu/*` | Include AIS in the permitted student sign-in sites; server redirects continue normally |
-| `*://my.uchicago.edu/` | Offer direct student sign-in from the HTTP or HTTPS homepage; account credentials are never filled on HTTP pages |
+| `*://my.uchicago.edu/` | Offer direct student sign-in from the HTTP or HTTPS homepage; credential entry takes place on the recognized HTTPS Okta page |
 
-Manage these host permissions through Chrome's **Site access** controls. Access to Duo does not authorize unrelated Duo sign-ins; a valid approved flow is still required.
+Manage these host permissions through Chrome's **Site access** controls. The assistant binds Duo actions to the tab, account, and sign-in flow you approved.
 
 ### Deleting data
 
-**Settings → Local data → Delete local data** removes saved account credentials, local passkeys, and the verification passphrase, and resets settings, language, and activity. Fifteen consecutive incorrect passphrases perform the same local deletion. Uninstalling the extension or deleting its Chrome profile also removes local credentials.
+**Settings → Local data → Delete local data** removes saved account credentials and local passkeys, and resets settings, language, and activity. Uninstalling the extension or deleting its Chrome profile also removes local credentials.
 
-These actions do not delete your school account, remove registrations from Duo, or delete passkeys held by other providers. Remove obsolete registrations in Duo separately, and retain another way to sign in.
+Your school account, Duo registrations, and passkeys held by other providers remain available. Manage Duo registrations from Duo device management and keep another verification method ready for account recovery.
 
 ## Troubleshooting
 
 | Problem | What to check |
 | --- | --- |
-| No sign-in prompt | Save an account, enable the assistant, allow the relevant site access, and refresh a supported entry or actual Okta sign-in page. Account settings and password recovery pages are excluded. |
-| A canceled attempt does not prompt again | Use the circular-arrow **Retry sign-in** control in the popup. |
-| The flow stops at an entry page or Duo | Check Chrome's site access, then start and approve a new sign-in in the same tab. If the page or request is unsupported, continue manually. |
-| Chrome's normal passkey dialog appears | Expected without a usable saved key, outside an approved flow, or after choosing another provider. If a usable key is saved, reload the extension and begin a fresh school sign-in. Unmatched or unsupported requests show an extension prompt before using another provider. |
-| Another confirmation or passphrase is required | Complete the authorization step or choose another provider. Approval expires, and Duo may require fresh identity verification. |
+| Sign-in prompt is not visible | Save an account, enable the assistant, allow the relevant site access, and refresh a supported entry or actual Okta sign-in page. The assistant keeps account settings and password recovery pages dedicated to their original purpose. |
+| Resume after canceling | Use the circular-arrow **Retry sign-in** control in the popup. |
+| Continue from an entry page or Duo | Confirm Chrome's site access, then start and approve a fresh sign-in in the same tab. Use the method presented by the site for a provider-specific step. |
+| Chrome presents its passkey provider | A usable local key and approved flow activate automatic verification. Reload the extension and begin a fresh school sign-in to restore that state. The assistant presents a provider choice for requests assigned to another authenticator. |
+| Duo presents a fresh identity check | Complete device verification or choose the Duo method you want to use. Each approved sign-in carries a fresh five-minute authorization window. |
 
 ## Development
 
-Requires Node.js 22 or later. There are no third-party runtime or test dependencies.
+Requires Node.js 22 or later. The project uses Node's built-in runtime and test modules.
 
 ```sh
 npm run check                  # Static and documentation checks
@@ -149,7 +145,7 @@ npm test -- controller policy  # Run selected test suites
 npm run package                # Static checks and packaging
 ```
 
-For a full test run, use `npm run test:all`. Packaging creates a source folder, ZIP, and SHA-256 checksum in `dist/`; it does not run the test suites again.
+For a full test run, use `npm run test:all`. Packaging performs the static checks and creates a source folder, ZIP, and SHA-256 checksum in `dist/`. Run `npm run test:all` before packaging for the full test suite.
 
 The loadable extension is in `extension/`, synthetic tests are in `test/`, and checks and packaging scripts are in `scripts/`. The extension manifest is at the root of `extension/`; `background/` holds the service worker, `pages/` the extension pages, `ui/` shared interface files, `content/` site adapters, `core/` authentication logic, and `icons/` and `locales/` their respective assets.
 

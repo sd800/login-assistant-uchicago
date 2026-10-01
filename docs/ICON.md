@@ -2,7 +2,7 @@
 
 The extension uses a white phoenix holding a key on a maroon tile. Rounded corners are encoded in the PNG's transparency, so the shape remains consistent in Chrome's toolbar, extension list, and extension pages. The artwork is the same in light and dark appearances.
 
-This is the identity of an independent project, not an official university mark. See the [independence statement](../README.md#independence-statement).
+The artwork identifies this independent project. See the [independence statement](../README.md#independence-statement).
 
 ## Assets
 
@@ -25,7 +25,7 @@ Larger artwork shows more feather and key detail. At toolbar sizes, the phoenix 
 
 ## Rebuilding exports
 
-The exported PNGs are included in the repository. Installing the extension, running tests, and creating a release archive do not require an image-processing library.
+The repository includes all exported PNGs for installation, testing, and release archives. Image-processing tools are used only when regenerating the exports.
 
 To regenerate the files, make [Sharp](https://sharp.pixelplumbing.com/) available locally and run:
 

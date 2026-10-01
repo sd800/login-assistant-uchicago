@@ -1,5 +1,5 @@
 import { randomId } from '../extension/core/encoding.js';
-import { emptyVault, newPin } from '../extension/core/vault.js';
+import { emptyVault } from '../extension/core/vault.js';
 import { Controller } from '../extension/core/controller.js';
 
 export const DUO = 'https://api-test123.duosecurity.com';
@@ -118,11 +118,13 @@ export function fixture(data = {}) {
       async registerContentScripts(values) { values.forEach(value => scripts.set(value.id, value)); }
     }
   };
+  let deviceConfigured = data.deviceConfigured !== false;
   const vault = { async read() { return structuredClone(vaultData); }, async write(value) { vaultData = structuredClone(value); },
-    async clear() { vaultData = emptyVault(); }, async setPin(pin) { vaultData.pin = pin ? await newPin(pin) : null; },
-    async protection() { const data = await this.read(); return { mode: 'none', locked: false, hasAccount: !!data.username,
+    async clear() { vaultData = emptyVault(); }, async unlockDevice() { return true; },
+    async setDevice() { deviceConfigured = true; },
+    async protection() { const data = await this.read(); return { mode: deviceConfigured ? 'device' : 'none', locked: false, hasAccount: !!data.username,
       hasPassword: !!data.password, hasPasskeys: !!data.credentials.length,
-      hasPin: !!data.pin, credentialId: '', prfSalt: '' }; } };
+      credentialId: deviceConfigured ? 'fixture-device-id' : '', prfSalt: deviceConfigured ? 'fixture-prf-salt' : '' }; } };
   const controller = new Controller(api, vault, () => now);
   return {
     controller, api, vault, frames, windows, scripts, permissions, sent, rules, ruleUpdates, reloaded, cookieOps, tabUpdates,

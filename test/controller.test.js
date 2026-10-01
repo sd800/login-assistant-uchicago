@@ -5,7 +5,7 @@ import { Controller } from '../extension/core/controller.js';
 import { SHORTCUT_RULE_ID, PORTAL_URL, shortcutRule } from '../extension/core/shortcut.js';
 import { createLanguagePreference, translate } from '../extension/core/locale.js';
 import { createCredential } from '../extension/core/passkeys.js';
-import { Vault, newPin } from '../extension/core/vault.js';
+import { Vault } from '../extension/core/vault.js';
 import { b64, unb64 } from '../extension/core/encoding.js';
 import { fixture, sender, ui, OKTA, DUO, creation, assertion, memoryRepository } from './helpers.mjs';
 
@@ -58,8 +58,8 @@ test('untrusted content cannot read settings or approve a prompt', async () => {
   await assert.rejects(f.controller.dispatch({ type: 'PROMPT_DECIDE', id: p.id, action: 'approve' }, sender()), /Open the extension/);
   await assert.rejects(f.controller.dispatch({ type: 'PROMPT_GET', id: p.id }, ui('confirm.html?id=wrong')), /does not match/);
 });
-test('settings snapshot excludes password, private keys and PIN material', async () => {
-  const { f, credential } = await withKey({ pin: await newPin('123456-test') });
+test('settings snapshot excludes password and private keys', async () => {
+  const { f, credential } = await withKey();
   const snapshot = await f.controller.dispatch({ type: 'UI_GET' }, ui());
   const text = JSON.stringify(snapshot);
   assert.equal(text.includes('test-only-password'), false);
@@ -101,77 +101,22 @@ test('another tab does not inherit login approval', async () => {
   assert.equal((await begin(f, from, credential)).fallback, true);
   assert.ok(f.state().flows[7].grant);
 });
-test('required UV never uses a click-only grant; native fallback is available', async () => {
+test('device-verified login grant satisfies Duo user verification without another prompt', async () => {
   const { f, credential } = await withKey(); await f.start(); const from = await f.toDuo();
   const result = await begin(f, from, credential, { userVerification: 'required' });
-  assert.equal(result.pending, true); const p = f.prompt();
-  await assert.rejects(f.approve(p, { credentialId: credential.id }), /Identity verification is required/);
-  await f.controller.dispatch({ type: 'PROMPT_DECIDE', id: p.id, action: 'fallback' }, ui(`confirm.html?id=${p.id}`));
-  assert.equal((await f.controller.dispatch({ type: 'PK_POLL', id: result.id }, from)).fallback, true);
+  assert.ok(result.response);
+  assert.equal(unb64(result.response.response.authenticatorData)[32], 0x05);
+  assert.equal(f.prompt(), undefined);
 });
-test('only a correct PIN supplies user verification', async () => {
-  const { f, credential } = await withKey({ pin: await newPin('test-pin-123') });
-  await f.controller.dispatch({ type: 'LOGIN_DETECTED' }, sender());
-  await assert.rejects(f.approve(f.prompt(), { pin: 'wrong-pin' }), /Incorrect verification passphrase/);
-  assert.equal(f.state().flows[7].status, 'asking');
-  await f.approve(f.prompt(), { pin: 'test-pin-123' });
-  const from = await f.toDuo(); const result = await begin(f, from, credential, { userVerification: 'required' });
-  assert.ok(result.response); assert.equal(unb64(result.response.response.authenticatorData)[32], 0x05);
-});
-test('PIN failures are rate limited persistently across worker restart', async () => {
-  const pin = await newPin('test-pin-123'); const f = fixture({ pin });
-  await f.controller.dispatch({ type: 'LOGIN_DETECTED' }, sender()); const p = f.prompt();
-  for (let i = 0; i < 5; i++) await assert.rejects(f.approve(p, { pin: 'wrong-pin' }));
-  const restarted = new Controller(f.api, f.vault, f.clock);
-  await assert.rejects(restarted.dispatch({ type: 'PROMPT_DECIDE', id: p.id, action: 'approve', pin: 'test-pin-123' }, ui(`confirm.html?id=${p.id}`)), /Too many incorrect passphrase attempts/);
-});
-test('fifteen consecutive wrong passphrases clear the vault and local settings', async () => {
-  const record = await newPin('correct-passphrase');
-  const f = fixture({ pin: record });
-  for (let attempt = 1; attempt <= 15; attempt++) {
-    if (attempt === 6 || attempt === 11) f.advance(300_001);
-    const check = f.controller.exclusive(() => f.controller.checkPin('wrong-passphrase', record));
-    if (attempt < 15) assert.equal(await check, false);
-    else await assert.rejects(check, /Local data was deleted/);
-  }
-  assert.equal((await f.vault.read()).password, '');
-  assert.deepEqual(f.api.storage.local.data, {});
-  assert.deepEqual(f.api.storage.session.data, {});
-});
-test('an empty replacement cannot silently remove passphrase protection', async () => {
-  const f = fixture();
-  await assert.rejects(f.controller.dispatch({ type: 'UI_PIN', newPin: '' }, ui()), /6–128 characters/);
-  assert.equal((await f.vault.read()).password, 'test-only-password');
-});
-test('removing a passphrase requires an unlocked vault and keeps saved account data', async () => {
-  const f = fixture();
-  const vault = new Vault(memoryRepository(), f.api.storage.session);
-  await vault.write({ version: 1, username: 'test-student', password: 'protected-test-password', credentials: [], pin: null });
-  await vault.setPin('correct-test-passphrase');
-  await vault.forget();
-  f.controller.vault = vault;
-  await assert.rejects(f.controller.dispatch({ type: 'UI_PIN_REMOVE' }, ui()), /Unlock local data/);
-  await f.controller.dispatch({ type: 'UI_UNLOCK_PIN', pin: 'correct-test-passphrase' }, ui('settings.html'));
-  const result = await f.controller.dispatch({ type: 'UI_PIN_REMOVE' }, ui('settings.html'));
-  assert.deepEqual(result, { removed: true });
-  assert.equal((await vault.protection()).mode, 'none');
-  assert.equal((await vault.read()).password, 'protected-test-password');
-});
-test('a protected account stays locked until the login confirmation supplies its passphrase', async () => {
-  const f = fixture();
-  const vault = new Vault(memoryRepository(), f.api.storage.session);
-  await vault.write({ version: 1, username: 'test-student', password: 'protected-test-password', credentials: [], pin: null });
-  await vault.setPin('correct-test-passphrase');
-  await vault.forget();
-  f.controller.vault = vault;
-  await f.controller.dispatch({ type: 'LOGIN_DETECTED' }, sender());
-  assert.equal(f.prompt().authMode, 'pin');
-  assert.equal(f.prompt().username, '');
-  await assert.rejects(f.approve(f.prompt(), { pin: 'wrong-test-passphrase' }), /Incorrect verification passphrase/);
-  await assert.rejects(vault.read(), /Unlock local data/);
-  await f.approve(f.prompt(), { pin: 'correct-test-passphrase' });
-  const result = await f.controller.dispatch({ type: 'LOGIN_STEP', step: 'password' }, sender());
-  assert.equal(result.password, 'protected-test-password');
+test('an account remains usable without device verification and keeps its local data', async () => {
+  const f = fixture({ deviceConfigured: false });
+  const before = await f.vault.read();
+  await f.controller.dispatch({ type: 'UI_SAVE_ACCOUNT', username: 'test-student', password: 'changed' }, ui());
+  assert.equal((await f.vault.read()).password, 'changed');
+  assert.deepEqual((await f.vault.read()).credentials, before.credentials);
+  assert.equal((await f.controller.dispatch({ type: 'LOGIN_DETECTED' }, sender())).status, 'asking');
+  await f.approve(f.prompt());
+  assert.equal(f.state().flows[7].status, 'active');
 });
 test('device mode requires a matching PRF secret and supplies user verification', async () => {
   const f = fixture();
@@ -251,6 +196,7 @@ test('signing reads the vault only after the accepted challenge has been persist
 
 test('navigation invalidates pending passkey requests and their confirmation windows', async () => {
   const { f, credential } = await withKey(); const from = await f.toDuo();
+  f.state().flows[7].grant.uv = false;
   const result = await begin(f, from, credential, { userVerification: 'required' }); const prompt = f.prompt();
   const url = `${DUO}/frame/v4/auth`; const documentId = 'new-duo-document';
   f.frames.set(7, { url, documentId });
@@ -423,23 +369,6 @@ test('an unreadable account removes the shortcut rather than trapping the next n
   f.vault.read = async () => { throw new Error('Storage unavailable'); };
   await f.controller.syncScripts();
   assert.equal(f.rules.size, 0);
-});
-
-test('inline sign-in exposes the active authorization method while the vault is locked', async () => {
-  for (const mode of ['pin', 'device']) {
-    const f = fixture();
-    const vault = new Vault(memoryRepository(), f.api.storage.session);
-    await vault.write({ version: 1, username: 'test-student', password: 'protected-test-password', credentials: [], pin: null });
-    if (mode === 'pin') await vault.setPin('correct-test-passphrase');
-    else await vault.setDevice('test-device-id', b64(crypto.getRandomValues(new Uint8Array(32))),
-      b64(crypto.getRandomValues(new Uint8Array(32))));
-    await vault.forget();
-    f.controller.vault = vault;
-    const prompt = await openShortcut(f);
-    assert.equal(prompt.authMode, mode);
-    assert.equal(prompt.hasPin, mode === 'pin');
-    assert.equal(prompt.deviceCredentialId, mode === 'device' ? 'test-device-id' : '');
-  }
 });
 
 test('inline confirmation bypasses the portal and carries one approval through AIS, Okta, and Duo', async () => {
@@ -699,7 +628,7 @@ test('revoked portal or Okta access blocks old content scripts and pending appro
 });
 
 test('account-only saving ignores Duo drafts and works with withheld Duo access', async () => {
-  const { f, credential } = await withKey({ pin: await newPin('existing-pin') });
+  const { f, credential } = await withKey();
   f.api.storage.local.data.settings.enabled = false;
   f.permissions.delete(DUO + '/*');
   const before = await f.vault.read();
@@ -707,7 +636,6 @@ test('account-only saving ignores Duo drafts and works with withheld Duo access'
   await f.controller.dispatch({ type: 'UI_SAVE_ACCOUNT', username: before.username, password: ' exact new password ', duoOrigin: 'invalid', enabled: true, selectedCredentialId: 'invalid' }, ui());
   const after = await f.vault.read();
   assert.equal(after.password, ' exact new password ');
-  assert.deepEqual(after.pin, before.pin);
   assert.deepEqual(after.credentials, [credential]);
   assert.deepEqual(await f.controller.settings(), settings);
 });

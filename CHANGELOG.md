@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.8.5 - 2026-10-01
+
+### Changed
+
+- Updated user-facing documentation and interface guidance.
+
+### Verification
+
+- Documentation and interface checks pass.
+
 ## 1.8.3 - 2026-10-01
 
 ### Changed

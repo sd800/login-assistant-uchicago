@@ -31,16 +31,24 @@
         <h2 data-i18n>Unlock local data</h2>
         <p class="help" data-i18n>Complete your authorization step to view and manage saved data.</p>
         <form id="unlock-form">
-          <div class="field" id="unlock-passphrase-field" hidden>
-            <label for="unlock-passphrase" data-i18n>Verification passphrase</label>
-            <input id="unlock-passphrase" type="password" autocomplete="off" maxlength="128">
-          </div>
-          <div class="actions"><button class="primary" type="submit" id="unlock-button" data-i18n>Unlock</button></div>
-          <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
+          <div class="actions"><button class="primary" type="submit" id="unlock-button" data-i18n>Verify with your device</button></div>
         </form>
         <p class="status" id="unlock-status" role="status" aria-live="polite"></p>
       </section>
       <div id="settings-protected">
+      <details class="disclosure" id="authorization-settings">
+        <summary><span data-i18n>Authorization step</span></summary>
+        <div class="disclosure-body">
+          <h3 data-i18n>Verify with your device</h3>
+          <p class="auth-state" id="device-state" role="status" aria-live="polite">
+            <span class="auth-check" id="device-check" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
+            <span id="device-state-text" data-i18n>Ready for device verification</span>
+          </p>
+          <p class="help" data-i18n>Use Touch ID, Windows Hello, or your device's sign-in method to protect saved data and authorize sign-in.</p>
+          <div class="actions"><button type="button" id="device-toggle" data-i18n>Set up device verification</button></div>
+          <p class="status" id="device-status" role="status" aria-live="polite"></p>
+        </div>
+      </details>
       <section class="section" aria-labelledby="account-heading">
         <h2 id="account-heading" data-i18n>Account</h2>
         <form id="account-form" aria-labelledby="account-heading">
@@ -64,9 +72,9 @@
         <h2 id="duo-heading" data-i18n>Duo &amp; passkeys</h2>
         <div aria-live="polite">
           <p class="duo-current"><span data-i18n>Current verification method:</span> <span class="duo-mode manual" id="duo-mode-state"><span id="duo-automatic-icon" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span><span id="duo-manual-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 4.5a2 2 0 0 1 3.4 0l8 14A2 2 0 0 1 20 21H4a2 2 0 0 1-1.7-2.5Z"/><path d="M12 9v5m0 3h.01"/></svg></span><span id="duo-mode" data-i18n>Manual verification</span></span></p>
-          <p class="help" id="duo-mode-help" data-i18n>Without a usable passkey for this account, complete Duo verification yourself.</p>
+          <p class="help" id="duo-mode-help" data-i18n>Use your preferred Duo method, or add a passkey for automatic verification.</p>
         </div>
-        <p class="help" data-i18n>Duo may skip verification when it remembers this browser. Duo controls when you need to verify again.</p>
+        <p class="help" data-i18n>Duo remembers trusted browsers and determines the next verification time.</p>
         <p class="status" id="duo-status" role="status" aria-live="polite"></p>
         <h3 class="passkeys-heading" id="passkeys-heading" data-i18n>Saved passkeys</h3>
         <ul class="credentials" id="credentials" aria-labelledby="passkeys-heading"><li class="help" data-i18n>Loading passkeys…</li></ul>
@@ -77,58 +85,7 @@
           <p class="help" data-i18n>Opens a new school sign-in tab. Automatic verification turns on when passkey setup is complete.</p>
         </div>
       </section>
-      <details class="disclosure" id="pin-settings">
-        <summary><span data-i18n>Authorization step</span></summary>
-        <div class="disclosure-body">
-          <p class="help" data-i18n>Device verification uses Touch ID, Windows Hello, or your device's sign-in method. Otherwise, enter your verification passphrase before sign-in.</p>
-          <div id="passphrase-settings">
-          <h3 data-i18n>Verification passphrase</h3>
-          <p class="auth-state" id="passphrase-state" role="status" aria-live="polite">
-            <span class="auth-check" id="passphrase-check" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
-            <span id="passphrase-state-text" data-i18n>Verification passphrase not set</span>
-          </p>
-          <form id="pin-form" hidden>
-            <div class="field">
-              <label for="new-pin" data-i18n>New verification passphrase</label>
-              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required aria-describedby="pin-help">
-              <p class="help" id="pin-help" data-i18n>Use 6–128 characters.</p>
-            </div>
-            <div class="actions"><button type="submit" data-i18n>Save</button></div>
-          </form>
-          <form id="pin-confirm-form" hidden>
-            <p class="help" data-i18n>Enter the same passphrase again to confirm it.</p>
-            <div class="field">
-              <label for="confirm-pin" data-i18n>Confirm verification passphrase</label>
-              <input id="confirm-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
-            </div>
-            <div class="actions"><button type="button" id="cancel-pin-confirm" data-i18n>Cancel</button><button type="submit" class="primary" id="confirm-pin-save" data-i18n>Confirm</button></div>
-          </form>
-          <div class="actions" id="remove-pin-actions" hidden><button type="button" class="danger" id="remove-pin" data-i18n>Remove verification passphrase</button></div>
-          <p class="status" id="pin-status" role="status" aria-live="polite"></p>
-          <p class="help secure-help" id="pin-storage-help" hidden>
-            <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
-            <span id="pin-storage-help-text"></span>
-          </p>
-          <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
-          </div>
-          <h3 data-i18n>Device verification</h3>
-          <p class="auth-state" id="device-state" role="status" aria-live="polite">
-            <span class="auth-check" id="device-check" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
-            <span id="device-state-text" data-i18n>Device verification not enabled</span>
-          </p>
-          <p class="help" data-i18n>Chrome asks your device to verify you before each sign-in. Your fingerprint or face data stays with your device.</p>
-          <div class="field" id="device-new-pin-field" hidden>
-            <label for="device-new-pin" data-i18n>New verification passphrase</label>
-            <input id="device-new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128">
-          </div>
-          <div class="field" id="device-confirm-pin-field" hidden>
-            <label for="device-confirm-pin" data-i18n>Confirm verification passphrase</label>
-            <input id="device-confirm-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128">
-          </div>
-          <div class="actions"><button type="button" id="device-cancel" hidden data-i18n>Cancel</button><button type="button" id="device-toggle" data-i18n>Enable device verification</button></div>
-          <p class="status" id="device-status" role="status" aria-live="polite"></p>
-        </div>
-      </details>
+
       </div>
     </div>
     <aside class="settings-help" aria-labelledby="help-heading">
@@ -136,12 +93,12 @@
         <h2 id="help-heading" data-i18n>Help</h2>
         <h3 data-i18n>Getting started</h3>
         <ol>
+          <li data-i18n>In Authorization step, set up Verify with your device to protect your saved data and authorize sign-in.</li>
           <li data-i18n>Enter your CNetID or UCMEDID and password, then choose Save in Account.</li>
-          <li data-i18n>In Authorization step, set a verification passphrase or enable device verification.</li>
           <li data-i18n>When asked, confirm that you want to add a passkey for one-click sign-in. You can also start from Add a passkey under Duo &amp; passkeys.</li>
-          <li data-i18n>The assistant opens the school sign-in and takes you to Duo device management. If Duo asks you to verify your identity, choose an existing method and complete verification.</li>
+          <li data-i18n>The assistant opens the school sign-in and takes you to Duo device management. Complete the identity check shown by Duo.</li>
           <li data-i18n>Choose Continue in the Add a passkey window. Once Duo finishes registration, automatic verification is enabled.</li>
-          <li data-i18n>Next time, open the school service you want to use and confirm the sign-in prompt. If you skip passkey setup, complete Duo verification yourself.</li>
+          <li data-i18n>Next time, open the school service you want to use and confirm the sign-in prompt. The assistant completes the supported sign-in steps.</li>
         </ol>
         <p class="help" data-i18n>Keep another Duo verification method.</p>
         <p class="notice" data-i18n>The extension runs entirely on your device. Your account details and passkeys are securely stored locally using industry-standard encryption.</p>
@@ -150,7 +107,7 @@
         <summary data-i18n>Recent activity</summary>
         <div class="disclosure-body">
           <ul class="history" id="history"></ul>
-          <p class="help" data-i18n>Up to 20 entries from the past 24 hours. Older entries are deleted automatically. Passwords, private keys, and full sign-in URLs are never recorded.</p>
+          <p class="help" data-i18n>Activity includes up to 20 status entries from the past 24 hours. Older entries are deleted automatically.</p>
         </div>
       </details>
       <details class="disclosure" id="privacy-notice">
@@ -158,13 +115,13 @@
         <div class="disclosure-body">
           <dl class="privacy-notice">
             <dt data-i18n>Protected on your device</dt>
-            <dd data-i18n>Your account details, passkey private keys, and passphrase verification record are protected with AES-GCM encryption in this Chrome profile. Settings and recent activity also stay on your device. Activity keeps up to 20 entries from the past 24 hours and never includes passwords, private keys, or full sign-in URLs.</dd>
+            <dd data-i18n>Your account details and passkey private keys are protected with AES-GCM encryption in this Chrome profile. Settings and recent activity stay on your device. Activity contains status and time information.</dd>
             <dt data-i18n>During sign-in</dt>
-            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. Page-address checks keep passkey responses within the sign-in you authorized, while private keys and the verification passphrase stay on your device.</dd>
-            <dt data-i18n>No tracking</dt>
-            <dd data-i18n>The extension has no ads, analytics, cloud sync, or developer servers receiving your data, and it never reads the Chrome password manager.</dd>
+            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. Page-address checks keep passkey responses within the sign-in you authorized, while private keys stay on your device.</dd>
+            <dt data-i18n>Private by design</dt>
+            <dd data-i18n>The extension runs locally. Your account details and passkey private keys stay in this Chrome profile.</dd>
             <dt data-i18n>Deleting data</dt>
-            <dd data-i18n>Delete local data removes the saved account, password, passkeys, and verification passphrase, and resets settings, language, and activity. Uninstalling removes all data saved by this extension. Neither action deletes your school account or Duo registrations.</dd>
+            <dd data-i18n>Delete local data removes the saved account, password, passkeys, settings, language, and activity. Your school account and Duo registrations remain available.</dd>
           </dl>
         </div>
       </details>
@@ -180,7 +137,7 @@
   </div>
   <footer class="footer">
     <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
-    <p class="version" data-i18n>Version 1.8.3</p>
+    <p class="version" data-i18n>Version 1.8.5</p>
     <p lang="en-US" translate="no">© 2026 Songming.org</p>
   </footer>
 </main>

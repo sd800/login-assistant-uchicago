@@ -1,7 +1,7 @@
 import { OKTA_ORIGIN, CONFIRM_TEXT, FLOW_MS, PROMPT_MS, canUseGrant, duoOrigin, liveFlow, validSender, validateAccount, publicCredential, isOktaLoginUrl, entryForUrl, entryTarget, isEntryTransit, HANDOFF_MS, DUO_MATCH, HISTORY_MS, continuesSignInFlow, parseHttps, credentialsForAccount, credentialForAccount, sameAccount, isDuoDeviceManagementUrl } from './policy.js';
 import { clearSignInCookies } from './cookies.js';
 import { randomId, b64, sha256, utf8 } from './encoding.js';
-import { emptyVault, newPin, verifyPin } from './vault.js';
+import { emptyVault } from './vault.js';
 import { checkRequest, createCredential, getAssertion, matchingCredentials } from './passkeys.js';
 import { LANGUAGE_KEY, resolveLocale, translate } from './locale.js';
 import { SHORTCUT_RULE_ID, SHORTCUT_PAGE, PORTAL_URL, shortcutRule } from './shortcut.js';
@@ -145,7 +145,7 @@ export class Controller {
     if (prompt.inline) return prompt;
     const window = await this.api.windows.create({
       url: this.api.runtime.getURL(`pages/confirm.html?id=${prompt.id}`),
-      type: 'popup', width: 420, height: prompt.kind === 'login' && !prompt.hasPin ? 390 : 540, focused: true
+      type: 'popup', width: 420, height: prompt.kind === 'login' ? 390 : 540, focused: true
     });
     prompt.windowId = window.id;
     return prompt;
@@ -205,8 +205,7 @@ export class Controller {
       const result = await this.requestLogin(sender, settings, 'myuchicago', true);
       const flow = this.state.flows[sender.tab.id];
       const prompt = Object.values(this.state.prompts).find(p => p.inline && p.flowId === flow?.id);
-      return result.status === 'asking' && prompt ? { ...prompt, hasPin: protection.hasPin,
-        authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt }
+      return result.status === 'asking' && prompt ? { ...prompt, authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt }
         : this.shortcutPortal(sender);
     }
     if (message.type !== 'SHORTCUT_DECIDE' || message.action !== 'approve') throw new Error("Unrecognized confirmation action.");
@@ -281,8 +280,7 @@ export class Controller {
       kind: 'login', inline, tabId: sender.tab.id, documentId: sender.documentId, flowId: next.id,
       origin: new URL(sender.url).origin, entryKind, title: CONFIRM_TEXT,
       username: data?.username || '', automaticDuo: automatesDuo(next, settings), credentialId: selected?.id, rpId: selected?.rpId,
-      credentialName: selected?.userName, requireUV: false, hasPin: protection.hasPin,
-      authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt
+      credentialName: selected?.userName, requireUV: false, authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt
     });
     return { status: 'asking' };
   }
@@ -410,13 +408,6 @@ export class Controller {
   }
   async uiMessage(message, sender, settings) {
     const protection = await this.vault.protection();
-    if (message.type === 'UI_UNLOCK_PIN') {
-      this.requireUI(sender, ['pages/settings.html']);
-      if (!['pin', 'pin-legacy'].includes(protection.mode)) throw new Error('Verification passphrase is not active.');
-      if (!await this.checkPin(message.pin)) throw new Error('Incorrect verification passphrase. Try again.');
-      if (protection.mode === 'pin-legacy') await this.vault.setPin(message.pin);
-      return { unlocked: true };
-    }
     if (message.type === 'UI_UNLOCK_DEVICE') {
       this.requireUI(sender, ['pages/settings.html']);
       if (protection.mode !== 'device' || !await this.vault.unlockDevice(message.secret, message.credentialId)) {
@@ -448,14 +439,14 @@ export class Controller {
       ...settings, locked: true, authMode: protection.mode, deviceCredentialId: protection.credentialId,
       prfSalt: protection.prfSalt, username: '', hasAccount: protection.hasAccount,
       hasPassword: protection.hasPassword, hasPasskeys: protection.hasPasskeys,
-      hasPin: protection.hasPin, credentials: [], history: await this.recentHistory()
+      credentials: [], history: await this.recentHistory()
     };
     const data = await this.vault.read();
     if (message.type === 'UI_GET') {
       const selected = await this.selectAccountCredential(data, settings);
       return { ...settings, locked: false, authMode: protection.mode, deviceCredentialId: protection.credentialId,
         prfSalt: protection.prfSalt, canAutomate: !!selected, username: data.username, hasAccount: !!data.username,
-        hasPassword: !!data.password, hasPasskeys: !!data.credentials.length, hasPin: !!data.pin,
+        hasPassword: !!data.password, hasPasskeys: !!data.credentials.length,
         credentials: data.credentials.map(publicCredential), history: await this.recentHistory() };
     }
     if (['UI_SAVE', 'UI_SAVE_ACCOUNT', 'UI_SAVE_SETTINGS'].includes(message.type)) {
@@ -498,43 +489,13 @@ export class Controller {
       }
       return { asking: true };
     }
-    if (message.type === 'UI_PIN') {
-      this.requireUI(sender, ['pages/settings.html']);
-      if (protection.mode === 'device') throw new Error('Turn off device verification before changing the passphrase.');
-      if (protection.locked) throw new Error('Unlock local data to continue.');
-      await newPin(message.newPin);
-      await this.vault.setPin(message.newPin);
-      await this.api.storage.local.set({ pinGuard: {} });
-      await this.invalidateAll();
-      return { saved: true };
-    }
-    if (message.type === 'UI_PIN_REMOVE') {
-      this.requireUI(sender, ['pages/settings.html']);
-      if (protection.mode === 'device') throw new Error('Turn off device verification before removing the passphrase.');
-      if (protection.locked) throw new Error('Unlock local data to continue.');
-      if (!data.pin) return { removed: false };
-      await this.vault.setPin('');
-      await this.api.storage.local.set({ pinGuard: {} });
-      await this.invalidateAll();
-      return { removed: true };
-    }
     if (message.type === 'UI_DEVICE_SET') {
       this.requireUI(sender, ['pages/settings.html']);
       if (typeof message.credentialId !== 'string' || typeof message.secret !== 'string' || typeof message.prfSalt !== 'string') {
         throw new Error('Device verification did not complete.');
       }
       await this.vault.setDevice(message.credentialId, message.secret, message.prfSalt);
-      await this.invalidateAll();
-      return { saved: true };
-    }
-    if (message.type === 'UI_DEVICE_OFF') {
-      this.requireUI(sender, ['pages/settings.html']);
-      if (protection.mode !== 'device' || !await this.vault.unlockDevice(message.secret, message.credentialId)) {
-        throw new Error('Device verification did not complete.');
-      }
-      await newPin(message.passphrase);
-      await this.vault.switchToPin(message.passphrase);
-      await this.api.storage.local.set({ pinGuard: {} });
+      await this.api.storage.local.remove('pinGuard');
       await this.invalidateAll();
       return { saved: true };
     }
@@ -547,21 +508,6 @@ export class Controller {
       return { deleted: true };
     }
     throw new Error("Unrecognized extension action.");
-  }
-  async checkPin(value, record) {
-    const { pinGuard = {} } = await this.api.storage.local.get('pinGuard');
-    if (pinGuard.until > this.now()) throw new Error("Too many incorrect passphrase attempts. Try again in 5 minutes.");
-    const protection = await this.vault.protection();
-    const correct = record ? await verifyPin(value, record) : protection.mode === 'pin' ? await this.vault.unlockPin(value) :
-      await verifyPin(value, (await this.vault.read()).pin);
-    if (correct) { await this.api.storage.local.set({ pinGuard: {} }); return true; }
-    const count = (pinGuard.count || 0) + 1;
-    if (count >= 15) {
-      await this.wipeAll();
-      throw new Error('Local data was deleted after 15 incorrect verification passphrases.');
-    }
-    await this.api.storage.local.set({ pinGuard: count % 5 === 0 ? { count, until: this.now() + 300_000 } : { count } });
-    return false;
   }
   async wipeAll() {
     await this.invalidateAll();
@@ -817,7 +763,7 @@ export class Controller {
     if (!prompt || prompt.deadline <= this.now()) throw new Error("This confirmation has expired. Return to the sign-in page and try again.");
     if (!!prompt.inline !== inline || (inline && (prompt.tabId !== sender.tab.id || prompt.documentId !== sender.documentId))) throw new Error("This confirmation window does not match the request.");
     const protection = await this.vault.protection();
-    if (message.type === 'PROMPT_GET') return { ...prompt, hasPin: protection.hasPin,
+    if (message.type === 'PROMPT_GET') return { ...prompt,
       authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt };
     if (message.type !== 'PROMPT_DECIDE' || !['approve', 'cancel', 'fallback', 'enroll'].includes(message.action)) throw new Error("Unrecognized confirmation action.");
     if (message.action === 'fallback' && ['repair', 'setup'].includes(prompt.kind)) throw new Error("Unrecognized confirmation action.");
@@ -838,12 +784,7 @@ export class Controller {
     }
     let uv = false;
     const authenticationRequired = ['login', 'setup'].includes(prompt.kind) || prompt.requireUV;
-    if (authenticationRequired && ['pin', 'pin-legacy'].includes(protection.mode)) {
-      if (!message.pin) throw new Error('Enter your verification passphrase.');
-      uv = await this.checkPin(message.pin);
-      if (!uv) throw new Error('Incorrect verification passphrase. Try again.');
-      if (protection.mode === 'pin-legacy') await this.vault.setPin(message.pin);
-    } else if (authenticationRequired && protection.mode === 'device') {
+    if (authenticationRequired && protection.mode === 'device') {
       if (!await this.vault.unlockDevice(message.deviceSecret, message.deviceCredentialId)) {
         throw new Error('Device verification did not complete.');
       }
@@ -888,11 +829,7 @@ export class Controller {
       await this.note("Starting passkey setup. Existing local keys have not been deleted.").catch(() => {});
       return { done: true };
     }
-    if (message.pin && !uv) {
-      uv = await this.checkPin(message.pin, data.pin);
-      if (!uv) throw new Error('Incorrect verification passphrase. Try again.');
-    }
-    if (prompt.requireUV && !uv) throw new Error(data.pin ? 'Enter your verification passphrase.' : 'Identity verification is required. Use another passkey provider or set a verification passphrase in settings.');
+    if (prompt.requireUV && !uv) throw new Error('Device verification is required.');
     if (prompt.kind === 'login') {
       const flow = this.state.flows[prompt.tabId];
       if (flow?.id !== prompt.flowId || flow.status !== 'asking') throw new Error("This sign-in request has expired.");
