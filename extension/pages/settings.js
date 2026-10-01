@@ -1,6 +1,8 @@
 import { $, api, status, date, t, bindText, localize, initializeLocale, getLocale, setLocale } from '../ui/ui.js';
 import { registerDevice, verifyDevice } from '../ui/device-auth.js';
 let snapshot;
+let pendingPassphrase;
+let deviceDisablePending = false;
 const PASSWORD_WILL_BE_SAVED = "Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSWORD_HAS_BEEN_SAVED = "Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSKEYS_WILL_BE_SAVED = "Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
@@ -26,6 +28,30 @@ function showPinStorage() {
   localize($('pin-storage-help-text'), () => t(snapshot.hasPin ? PIN_HAS_BEEN_SAVED : PIN_WILL_BE_SAVED));
   $('pin-storage-help').hidden = false;
 }
+function clearPassphraseEntry() {
+  pendingPassphrase = null;
+  $('new-pin').value = '';
+  $('confirm-pin').value = '';
+}
+function showAuthorizationStates() {
+  const hasPin = !!snapshot.hasPin;
+  const device = snapshot.authMode === 'device';
+  $('passphrase-state').className = 'auth-state' + (hasPin ? ' ready' : '');
+  $('passphrase-check').hidden = !hasPin;
+  bindText($('passphrase-state-text'), hasPin ? 'Verification passphrase set' : 'Verification passphrase not set');
+  $('device-state').className = 'auth-state' + (device ? ' ready' : '');
+  $('device-check').hidden = !device;
+  bindText($('device-state-text'), device ? 'Device verification enabled' : 'Device verification not enabled');
+  $('pin-form').hidden = device || !!pendingPassphrase;
+  $('pin-confirm-form').hidden = device || !pendingPassphrase;
+  $('remove-pin-actions').hidden = device || !hasPin || !!pendingPassphrase;
+  $('device-new-pin-field').hidden = !device || !deviceDisablePending;
+  $('device-new-pin').required = device && deviceDisablePending;
+  $('device-confirm-pin-field').hidden = !device || !deviceDisablePending;
+  $('device-confirm-pin').required = device && deviceDisablePending;
+  $('device-cancel').hidden = !device || !deviceDisablePending;
+  bindText($('device-toggle'), device ? deviceDisablePending ? 'Confirm' : 'Turn off device verification' : 'Enable device verification');
+}
 function passwordRequirement() {
   $('password').required = !passwordIsSaved();
   showPasswordStorage();
@@ -50,19 +76,15 @@ async function load({ account = false, pin = false } = {}) {
   $('settings-protected').hidden = !!snapshot.locked;
   $('unlock-passphrase-field').hidden = !['pin', 'pin-legacy'].includes(snapshot.authMode);
   bindText($('unlock-button'), snapshot.authMode === 'device' ? 'Verify with device' : 'Unlock');
-  if (snapshot.locked) return;
-  bindText($('device-toggle'), snapshot.authMode === 'device' ? 'Turn off device verification' : 'Enable device verification');
-  $('device-old-pin-field').hidden = snapshot.authMode !== 'device';
-  $('device-old-pin').required = snapshot.authMode === 'device';
-  $('passphrase-settings').hidden = snapshot.authMode === 'device';
-  bindText($('device-passphrase-label'), snapshot.hasPin ? 'Current verification passphrase' : 'New verification passphrase');
+  if (snapshot.locked) { clearPassphraseEntry(); deviceDisablePending = false; return; }
+  if (pendingPassphrase && (pendingPassphrase.hadPin !== !!snapshot.hasPin || pendingPassphrase.mode !== snapshot.authMode)) clearPassphraseEntry();
+  if (snapshot.authMode !== 'device') deviceDisablePending = false;
   // Refresh only the saved section. Other forms keep their current drafts.
   if (account) { $('username').value = snapshot.username; $('password').value = ''; }
   passwordRequirement();
   localize($('password'), () => t(snapshot.hasPassword ? "Saved — leave blank to keep" : "Enter your school password"), 'placeholder');
-  if (pin) { $('old-pin').value = ''; $('new-pin').value = ''; }
-  $('old-pin-field').hidden = !snapshot.hasPin;
-  $('old-pin').required = snapshot.hasPin;
+  if (pin) clearPassphraseEntry();
+  showAuthorizationStates();
   if ($('pin-settings').open) showPinStorage();
   showDuoMode();
   $('credentials').replaceChildren();
@@ -122,6 +144,13 @@ async function load({ account = false, pin = false } = {}) {
 $('username').addEventListener('input', passwordRequirement);
 $('pin-settings').addEventListener('toggle', () => {
   if ($('pin-settings').open) showPinStorage();
+  else {
+    clearPassphraseEntry();
+    deviceDisablePending = false;
+    $('device-new-pin').value = '';
+    $('device-confirm-pin').value = '';
+    if (snapshot && !snapshot.locked) showAuthorizationStates();
+  }
 });
 $('language').addEventListener('change', async event => {
   if (!event.isTrusted) return;
@@ -156,10 +185,55 @@ $('add-passkey').addEventListener('click', async event => {
   finally { showDuoMode(); }
 });
 $('pin-form').addEventListener('submit', async event => {
-  event.preventDefault(); if (!event.isTrusted) return;
-  try { await api({ type: 'UI_PIN', oldPin: $('old-pin').value, newPin: $('new-pin').value }); await load({ pin: true }); status($('pin-status'), 'Verification passphrase saved.'); }
-  catch (error) { status($('pin-status'), error.message, true); await load().catch(() => {}); }
-  finally { $('old-pin').value = ''; $('new-pin').value = ''; }
+  event.preventDefault(); if (!event.isTrusted || pendingPassphrase || snapshot?.authMode === 'device') return;
+  const value = $('new-pin').value;
+  if (value.length < 6 || value.length > 128) {
+    status($('pin-status'), 'Use 6–128 characters for your verification passphrase.', true);
+    return;
+  }
+  pendingPassphrase = { value, hadPin: !!snapshot.hasPin, mode: snapshot.authMode };
+  $('new-pin').value = '';
+  status($('pin-status'), '');
+  showAuthorizationStates();
+  $('confirm-pin').focus?.();
+});
+$('cancel-pin-confirm').addEventListener('click', event => {
+  if (!event.isTrusted) return;
+  clearPassphraseEntry();
+  showAuthorizationStates();
+  status($('pin-status'), '');
+});
+$('pin-confirm-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (!event.isTrusted || !pendingPassphrase) return;
+  if ($('confirm-pin').value !== pendingPassphrase.value) {
+    $('confirm-pin').value = '';
+    status($('pin-status'), 'The verification passphrases do not match. Try again.', true);
+    $('confirm-pin').focus?.();
+    return;
+  }
+  $('confirm-pin-save').disabled = true;
+  try {
+    await api({ type: 'UI_PIN', newPin: pendingPassphrase.value });
+    clearPassphraseEntry();
+    await load({ pin: true });
+    status($('pin-status'), 'Verification passphrase saved.');
+  } catch (error) {
+    $('confirm-pin').value = '';
+    await load().catch(() => {});
+    status($('pin-status'), error.message, true);
+  } finally { $('confirm-pin-save').disabled = false; }
+});
+$('remove-pin').addEventListener('click', async event => {
+  if (!event.isTrusted || $('remove-pin').disabled || !snapshot?.hasPin || snapshot.authMode === 'device' ||
+      !confirm(t('Remove your verification passphrase? Future sign-ins will no longer ask for it until you set one again. Your saved account and passkeys will remain on this device.'))) return;
+  $('remove-pin').disabled = true;
+  try {
+    await api({ type: 'UI_PIN_REMOVE' });
+    clearPassphraseEntry();
+    await load({ pin: true });
+    status($('pin-status'), 'Verification passphrase removed.');
+  } catch (error) { status($('pin-status'), error.message, true); }
+  finally { $('remove-pin').disabled = false; }
 });
 $('unlock-form').addEventListener('submit', async event => {
   event.preventDefault(); if (!event.isTrusted || !snapshot?.locked) return;
@@ -179,24 +253,46 @@ $('unlock-form').addEventListener('submit', async event => {
 });
 $('device-toggle').addEventListener('click', async event => {
   if (!event.isTrusted || $('device-toggle').disabled) return;
+  if (snapshot.authMode === 'device' && !deviceDisablePending) {
+    deviceDisablePending = true;
+    showAuthorizationStates();
+    $('device-new-pin').focus?.();
+    return;
+  }
   $('device-toggle').disabled = true;
   try {
     if (snapshot.authMode === 'device') {
-      if (!$('device-old-pin').value) throw new Error('Enter your verification passphrase.');
+      if ($('device-new-pin').value.length < 6 || $('device-new-pin').value.length > 128) {
+        throw new Error('Use 6–128 characters for your verification passphrase.');
+      }
+      if ($('device-new-pin').value !== $('device-confirm-pin').value) {
+        throw new Error('The verification passphrases do not match. Try again.');
+      }
       const secret = await verifyDevice(snapshot.deviceCredentialId, snapshot.prfSalt);
-      await api({ type: 'UI_DEVICE_OFF', credentialId: snapshot.deviceCredentialId, secret, passphrase: $('device-old-pin').value });
+      await api({ type: 'UI_DEVICE_OFF', credentialId: snapshot.deviceCredentialId, secret, passphrase: $('device-new-pin').value });
     } else {
       const device = await registerDevice();
       await api({ type: 'UI_DEVICE_SET', ...device });
     }
-    $('device-old-pin').value = '';
+    $('device-new-pin').value = '';
+    $('device-confirm-pin').value = '';
+    deviceDisablePending = false;
     await load({ account: true, pin: true });
     status($('device-status'), 'Authorization step updated.');
   } catch (error) {
-    $('device-old-pin').value = '';
+    $('device-new-pin').value = '';
+    $('device-confirm-pin').value = '';
     status($('device-status'), error.message, true);
     await load().catch(() => {});
   } finally { $('device-toggle').disabled = false; }
+});
+$('device-cancel').addEventListener('click', event => {
+  if (!event.isTrusted) return;
+  deviceDisablePending = false;
+  $('device-new-pin').value = '';
+  $('device-confirm-pin').value = '';
+  showAuthorizationStates();
+  status($('device-status'), '');
 });
 $('clear').addEventListener('click', async event => {
   if (!event.isTrusted || !confirm(t('Delete local data? Your saved account, password, passkeys, and verification passphrase will be removed. Settings, language, and activity will also be reset. This cannot be undone. Make sure you have another way to verify with Duo.'))) return;

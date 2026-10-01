@@ -4,6 +4,19 @@
 
 Changes by release, newest first.
 
+## 1.8.2 - 2026-10-01
+
+### Changed
+
+- Settings now shows clear, checked status for a saved verification passphrase and enabled device verification.
+- Saving or changing a verification passphrase requires entering it twice. A saved passphrase can now be removed without deleting the account or passkeys.
+- Device verification can be turned off from Settings, returning authorization to the passphrase.
+- Reorganized the setup and sign-in guidance in both READMEs.
+
+### Verification
+
+- Static checks and the complete test suite pass.
+
 ## 1.8.1 - 2026-10-01
 
 ### Added

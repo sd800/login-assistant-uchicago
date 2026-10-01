@@ -14,7 +14,7 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.8.1
+Current version: 1.8.2
 
 Release date: October 1, 2026
 
@@ -29,11 +29,31 @@ Requires desktop Google Chrome 122 or later. No server, build step, or dependenc
 
 To update, replace the project files in the same folder, choose **Reload** on `chrome://extensions`, and refresh open sign-in pages. Do not uninstall as an update step: uninstalling removes this extension's saved account information and passkeys.
 
-## Getting started
+## Set up
 
-In **Settings → Account**, enter your **CNetID or UCMEDID** and **Password**, then choose **Save**. Account details must be entered in the extension; it does not import passwords from Chrome's password manager.
+### Save your account and choose an authorization method
 
-Make sure the assistant is enabled using the power icon in its popup. Then start from a service you want to use:
+In **Settings → Account**, enter your **CNetID or UCMEDID** and **Password**, then choose **Save**. Enter these details in the extension; it does not import passwords from Chrome's password manager. Keep the assistant enabled using the power icon in its popup.
+
+In **Settings → Authorization step**, set a **Verification passphrase** or enable **Device verification**. To set or change a passphrase, enter 6–128 characters and choose **Save**, then enter the same passphrase again and choose **Confirm**. The passphrase is saved only after the entries match. A green check shows when it is set. **Remove verification passphrase** removes it while keeping your saved account and passkeys.
+
+Device verification uses Chrome's system prompt, such as Touch ID or Windows Hello. Chrome chooses the available method. A green check shows when device verification is enabled. To turn it off, enter and confirm a new passphrase, then complete Chrome's device prompt. The device must support deriving an encryption key from its credential; otherwise it cannot be enabled.
+
+### Add a Duo passkey
+
+After you save an account without a usable passkey, the assistant asks whether to add one for one-click sign-in. Confirm that prompt, or choose **Settings → Duo & passkeys → Add a passkey**. The assistant starts a fresh student sign-in for setup.
+
+1. The assistant opens Duo's options menu and chooses **Manage devices**. If Duo asks you to verify your identity, use an existing method and finish that step. The assistant then continues.
+2. In device management, the assistant chooses **Add a device → Security key → Continue**. In the extension's **Add a passkey** window, choose **Continue**.
+3. When Duo's device list shows the new security key, the assistant chooses **Back to login** and then **Security Key**. The key is ready for automatic verification after Duo completes registration.
+
+The extension creates a new passkey locally and registers its public key with Duo. It does not import passkeys from Chrome, your operating system, or a physical security key. A key appearing in the extension alone does not prove that Duo completed registration. Keep another Duo verification method.
+
+No Duo address needs to be entered. Allow the extension to access Duo pages in Chrome. Outside a sign-in you approved through the assistant, Duo passkey requests use Chrome's normal provider.
+
+## Sign in
+
+Open the service you want to use and confirm the assistant's sign-in prompt. Supported starting points include:
 
 | Starting point | What happens after confirmation |
 | --- | --- |
@@ -46,15 +66,15 @@ The assistant asks:
 
 > Sign in to UChicago with saved account?
 
-Choose **Confirm** to continue or **Cancel** to stop the attempt. On my.UChicago, the prompt appears in the current tab and Cancel opens the regular portal. Pausing the assistant or removing the saved account restores the normal my.UChicago navigation. **Enter** or **Space** confirms when focus is on the page or Confirm button; **Esc** cancels. Inputs and other focused controls keep their normal keyboard behavior.
+Choose **Confirm** to continue or **Cancel** to stop. On my.UChicago, the prompt opens in the current tab and Cancel opens the regular portal. **Enter** or **Space** confirms when focus is on the page or Confirm button; **Esc** cancels. Focused inputs and controls keep their usual keyboard behavior.
 
-Start from the application you want to access, not the `uchicago.okta.com` account management home page. The referring application and final destination do not need to end in `uchicago.edu`. Redirects stay within the approved flow in the same tab; an existing session may also return directly to the application without visiting Duo.
+Complete the selected authorization step after confirming. The approval covers this sign-in in the current tab for up to five minutes, including supported redirects. With a usable saved passkey, the assistant selects **Security Key** in Duo and uses that passkey without asking you to confirm it again. Duo may remember this browser and skip verification; Duo decides when verification is needed. If Duo asks you to verify your identity separately, complete that step yourself.
 
-After confirmation, the approved tab can continue supported sign-in steps while you use another tab. The assistant keeps the tab available during the five-minute flow and wakes its page adapters from browser navigation events. Any Duo step that asks for input still needs your response.
+You can switch to another tab while supported sign-in steps continue in the approved tab. After Duo verification, if Duo asks **Is this your device?**, the assistant selects **Yes, this is my device**. An existing session may also return directly to the application without visiting Duo.
 
-After Duo verification, the assistant selects **Yes, this is my device** if Duo asks **Is this your device?**. If that page does not appear, sign-in continues normally.
+Start from the application you want to access, not the `uchicago.okta.com` account management home page. The referring application and destination need not end in `uchicago.edu`. A new sign-in requires a new confirmation.
 
-### Popup and settings
+### Controls and saved passkeys
 
 | Control | Action |
 | --- | --- |
@@ -62,39 +82,15 @@ After Duo verification, the assistant selects **Yes, this is my device** if Duo 
 | Circular arrow | Ask again on the current supported page after a canceled or stopped attempt |
 | Settings icon | Manage the account, passkeys, authorization step, language, and local data |
 
-A card icon appears when an account and password are saved. A key icon appears when a local passkey exists; it does not indicate that Duo has accepted its registration.
+A card icon in the popup means an account and password are saved. A key icon means a local passkey exists; it does not prove Duo has accepted its registration. Choose the interface language at the top of **Settings**; changes apply to extension windows immediately and persist after refresh. The appearance follows your system theme.
 
-Choose the interface language at the top of **Settings**. Changes apply immediately to extension windows. Your choice is remembered when you reopen or refresh the page. The appearance follows your system theme.
+**Duo & passkeys** shows **Automatic verification** when the saved account has a usable passkey and **Manual verification** when it does not. The Add a passkey button is hidden while a usable key exists. Without one, complete Duo verification yourself. Saved passkeys list their account and added date and have a delete control.
 
-Choose **Save** to save your account details. If the saved account has no usable passkey, the assistant asks whether you want to add one for one-click sign-in. **Duo & passkeys** shows the current verification mode with a status icon. A usable passkey for the saved account keeps **Automatic verification** on; without one, Duo verification is manual. There is no mode switch. **Add a passkey** and its explanation are hidden while a usable key exists, and return when the last usable key is deleted or marked invalid. Duo may remember this browser and skip verification; when it asks again depends on Duo's policies.
+A key Duo explicitly rejects is marked **Invalid** and excluded from automatic use. The assistant offers to add a replacement. Canceling leaves this sign-in for manual Duo verification; the next sign-in opens device management and asks again when Duo is ready to create the replacement. Timeouts, cancellations, and unmatched requests do not mark a key invalid. Invalid or replaced local keys remain until you delete them or clear local data.
 
-In **Authorization step**, set a **Verification passphrase** or enable **Device verification**. Device verification uses Chrome's system prompt, such as Touch ID or Windows Hello. Chrome chooses the available device sign-in method. Device verification activates only when the device supports deriving an encryption key from its credential.
+If a passkey request is incompatible, choose **Use another passkey provider** when offered, or use another Duo method. Hardware attestation, platform-only authenticator requests, and some WebAuthn features are not supported. Duo's policies determine which credentials it accepts.
 
-Saved passkeys appear with a lock icon, their account, added date, and a delete control. A key explicitly rejected by Duo is marked **Invalid** and excluded from automatic use. The assistant offers to add a replacement. Canceling releases the current Duo verification for manual completion; the next sign-in goes directly to device management and asks again only when Duo is ready to create the replacement. Timeouts, cancellations, and unmatched requests do not establish that a key is invalid. Invalid keys and keys replaced in Duo stay in the local vault until you delete them or clear local data.
-
-## Duo passkeys
-
-The extension includes a software passkey provider. It creates new credentials locally and lets Duo register their public keys; it does not import existing passkeys from your browser, operating system, or security key.
-
-### Add a passkey
-
-1. After saving an account without a usable passkey, confirm the prompt to add one for one-click sign-in. You can also choose **Settings → Duo & passkeys → Add a passkey**. This confirmation starts a fresh student sign-in and covers that setup sign-in.
-2. The assistant opens Duo's options menu and chooses **Manage devices**. Complete Duo's identity check if asked. A short message guides you to choose an existing method and finish verification; the assistant then continues automatically.
-3. In device management, the assistant chooses **Add a device → Security key → Continue**. In the extension's **Add a passkey** window, choose **Continue**.
-4. Once the new security key appears in Duo's device list, the assistant chooses **Back to login**, opens the options menu, and selects **Security Key**. A key appearing in the extension alone does not establish that Duo accepted its registration.
-5. **Automatic verification** turns on once setup is complete and stays on while a usable passkey is saved. The Add a passkey button and its explanation disappear from Settings. Complete the authorization step when prompted.
-
-No Duo address needs to be entered or saved. Chrome must allow the extension to access Duo pages. Standalone Duo tabs and requests outside the approved flow use Chrome's normal passkey provider.
-
-If a request is incompatible, choose **Use another passkey provider** when offered, or continue with your existing Duo method. Hardware attestation, platform-only authenticator requests, and some WebAuthn features are not supported. Duo's policies determine which credentials it accepts.
-
-### Confirmation and authorization step
-
-Your initial confirmation covers the current sign-in in that tab for up to five minutes. Complete the selected authorization step after confirming. With a usable saved passkey, the assistant chooses it without another passkey confirmation. Redirects do not restart the timer. A missing or invalid key, an unsupported request, or a separate Duo identity check may need your attention. A new sign-in needs a new confirmation.
-
-The **Verification passphrase** accepts 6–128 characters and differs from your school password and device PIN. Five consecutive incorrect entries pause passphrase checks for five minutes. After 15 consecutive incorrect entries, the extension deletes its saved local data. A successful entry resets the count. Canceling a device verification prompt does not count as an incorrect passphrase.
-
-Keep another Duo verification method.
+The verification passphrase differs from your school password and device PIN. Five consecutive incorrect entries pause checks for five minutes; after 15 consecutive incorrect entries, the extension deletes its saved local data. A successful entry resets the count. Canceling a device verification prompt does not count as an incorrect passphrase.
 
 ## Privacy and security
 

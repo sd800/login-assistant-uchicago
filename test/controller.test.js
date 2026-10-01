@@ -143,6 +143,20 @@ test('an empty replacement cannot silently remove passphrase protection', async 
   await assert.rejects(f.controller.dispatch({ type: 'UI_PIN', newPin: '' }, ui()), /6–128 characters/);
   assert.equal((await f.vault.read()).password, 'test-only-password');
 });
+test('removing a passphrase requires an unlocked vault and keeps saved account data', async () => {
+  const f = fixture();
+  const vault = new Vault(memoryRepository(), f.api.storage.session);
+  await vault.write({ version: 1, username: 'test-student', password: 'protected-test-password', credentials: [], pin: null });
+  await vault.setPin('correct-test-passphrase');
+  await vault.forget();
+  f.controller.vault = vault;
+  await assert.rejects(f.controller.dispatch({ type: 'UI_PIN_REMOVE' }, ui()), /Unlock local data/);
+  await f.controller.dispatch({ type: 'UI_UNLOCK_PIN', pin: 'correct-test-passphrase' }, ui('settings.html'));
+  const result = await f.controller.dispatch({ type: 'UI_PIN_REMOVE' }, ui('settings.html'));
+  assert.deepEqual(result, { removed: true });
+  assert.equal((await vault.protection()).mode, 'none');
+  assert.equal((await vault.read()).password, 'protected-test-password');
+});
 test('a protected account stays locked until the login confirmation supplies its passphrase', async () => {
   const f = fixture();
   const vault = new Vault(memoryRepository(), f.api.storage.session);

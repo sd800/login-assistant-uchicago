@@ -81,32 +81,51 @@
         <summary><span data-i18n>Authorization step</span></summary>
         <div class="disclosure-body">
           <p class="help" data-i18n>Device verification uses Touch ID, Windows Hello, or your device's sign-in method. Otherwise, enter your verification passphrase before sign-in.</p>
-          <div id="passphrase-settings"><h3 data-i18n>Verification passphrase</h3>
-          <form id="pin-form">
-            <div class="field" id="old-pin-field" hidden>
-              <label for="old-pin" data-i18n>Current verification passphrase</label>
-              <input id="old-pin" type="password" autocomplete="off" maxlength="128">
-            </div>
+          <div id="passphrase-settings">
+          <h3 data-i18n>Verification passphrase</h3>
+          <p class="auth-state" id="passphrase-state" role="status" aria-live="polite">
+            <span class="auth-check" id="passphrase-check" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
+            <span id="passphrase-state-text" data-i18n>Verification passphrase not set</span>
+          </p>
+          <form id="pin-form" hidden>
             <div class="field">
               <label for="new-pin" data-i18n>New verification passphrase</label>
-              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required aria-describedby="pin-help pin-storage-help">
+              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required aria-describedby="pin-help">
               <p class="help" id="pin-help" data-i18n>Use 6–128 characters.</p>
-              <p class="help secure-help" id="pin-storage-help" hidden>
-                <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
-                <span id="pin-storage-help-text"></span>
-              </p>
-              <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
             </div>
-            <div class="actions"><button type="submit" data-i18n>Save passphrase</button></div>
-            <p class="status" id="pin-status" role="status" aria-live="polite"></p>
-          </form></div>
-          <h3 data-i18n>Device verification</h3>
-          <p class="help" data-i18n>Chrome asks your device to verify you before each sign-in. Your fingerprint or face data stays with your device.</p>
-          <div class="field" id="device-old-pin-field" hidden>
-            <label for="device-old-pin" id="device-passphrase-label" data-i18n>Verification passphrase</label>
-            <input id="device-old-pin" type="password" autocomplete="off" maxlength="128">
+            <div class="actions"><button type="submit" data-i18n>Save</button></div>
+          </form>
+          <form id="pin-confirm-form" hidden>
+            <p class="help" data-i18n>Enter the same passphrase again to confirm it.</p>
+            <div class="field">
+              <label for="confirm-pin" data-i18n>Confirm verification passphrase</label>
+              <input id="confirm-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required>
+            </div>
+            <div class="actions"><button type="button" id="cancel-pin-confirm" data-i18n>Cancel</button><button type="submit" class="primary" id="confirm-pin-save" data-i18n>Confirm</button></div>
+          </form>
+          <div class="actions" id="remove-pin-actions" hidden><button type="button" class="danger" id="remove-pin" data-i18n>Remove verification passphrase</button></div>
+          <p class="status" id="pin-status" role="status" aria-live="polite"></p>
+          <p class="help secure-help" id="pin-storage-help" hidden>
+            <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
+            <span id="pin-storage-help-text"></span>
+          </p>
+          <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
           </div>
-          <div class="actions"><button type="button" id="device-toggle" data-i18n>Enable device verification</button></div>
+          <h3 data-i18n>Device verification</h3>
+          <p class="auth-state" id="device-state" role="status" aria-live="polite">
+            <span class="auth-check" id="device-check" aria-hidden="true" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 4 4L19 6"/></svg></span>
+            <span id="device-state-text" data-i18n>Device verification not enabled</span>
+          </p>
+          <p class="help" data-i18n>Chrome asks your device to verify you before each sign-in. Your fingerprint or face data stays with your device.</p>
+          <div class="field" id="device-new-pin-field" hidden>
+            <label for="device-new-pin" data-i18n>New verification passphrase</label>
+            <input id="device-new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128">
+          </div>
+          <div class="field" id="device-confirm-pin-field" hidden>
+            <label for="device-confirm-pin" data-i18n>Confirm verification passphrase</label>
+            <input id="device-confirm-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128">
+          </div>
+          <div class="actions"><button type="button" id="device-cancel" hidden data-i18n>Cancel</button><button type="button" id="device-toggle" data-i18n>Enable device verification</button></div>
           <p class="status" id="device-status" role="status" aria-live="polite"></p>
         </div>
       </details>
@@ -161,7 +180,7 @@
   </div>
   <footer class="footer">
     <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
-    <p class="version" data-i18n>Version 1.8.1</p>
+    <p class="version" data-i18n>Version 1.8.2</p>
     <p lang="en-US" translate="no">© 2026 Songming.org</p>
   </footer>
 </main>

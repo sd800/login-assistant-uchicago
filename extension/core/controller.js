@@ -501,12 +501,22 @@ export class Controller {
     if (message.type === 'UI_PIN') {
       this.requireUI(sender, ['pages/settings.html']);
       if (protection.mode === 'device') throw new Error('Turn off device verification before changing the passphrase.');
-      if (data.pin && !await this.checkPin(message.oldPin, data.pin)) throw new Error('The current verification passphrase is incorrect.');
+      if (protection.locked) throw new Error('Unlock local data to continue.');
       await newPin(message.newPin);
       await this.vault.setPin(message.newPin);
       await this.api.storage.local.set({ pinGuard: {} });
       await this.invalidateAll();
       return { saved: true };
+    }
+    if (message.type === 'UI_PIN_REMOVE') {
+      this.requireUI(sender, ['pages/settings.html']);
+      if (protection.mode === 'device') throw new Error('Turn off device verification before removing the passphrase.');
+      if (protection.locked) throw new Error('Unlock local data to continue.');
+      if (!data.pin) return { removed: false };
+      await this.vault.setPin('');
+      await this.api.storage.local.set({ pinGuard: {} });
+      await this.invalidateAll();
+      return { removed: true };
     }
     if (message.type === 'UI_DEVICE_SET') {
       this.requireUI(sender, ['pages/settings.html']);
@@ -522,10 +532,9 @@ export class Controller {
       if (protection.mode !== 'device' || !await this.vault.unlockDevice(message.secret, message.credentialId)) {
         throw new Error('Device verification did not complete.');
       }
-      if (!message.passphrase) throw new Error('Enter your verification passphrase.');
-      if (data.pin && !await this.checkPin(message.passphrase, data.pin)) throw new Error('Incorrect verification passphrase. Try again.');
       await newPin(message.passphrase);
       await this.vault.switchToPin(message.passphrase);
+      await this.api.storage.local.set({ pinGuard: {} });
       await this.invalidateAll();
       return { saved: true };
     }

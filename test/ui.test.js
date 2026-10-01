@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { Element, element as e, documentWith } from './dom-fixture.mjs';
-import { fixture, ui, OKTA, DUO, sender, creation } from './helpers.mjs';
-import { emptyVault, newPin } from '../extension/core/vault.js';
+import { fixture, ui, OKTA, DUO, sender, creation, memoryRepository } from './helpers.mjs';
+import { Vault, emptyVault, newPin } from '../extension/core/vault.js';
+import { b64 } from '../extension/core/encoding.js';
 import { CONFIRM_TEXT } from '../extension/core/policy.js';
 import { PORTAL_URL, SHORTCUT_PAGE } from '../extension/core/shortcut.js';
 import { createLanguagePreference, translate } from '../extension/core/locale.js';
@@ -25,7 +26,7 @@ async function page(name, f = fixture()) {
   document.createElement = tag => e(tag, {});
   const calls = [], permissionRequests = [], hooks = {};
   const pagePath = name + '.html' + (name === 'confirm' ? '?id=' + (Object.keys(f.state()?.prompts ?? {})[0] ?? 'missing') : '');
-  const state = { settingsOpened: 0, closed: false, confirmationRequests: [], confirmResult: true, validityChecks: 0, destinations: [] };
+  const state = { settingsOpened: 0, closed: false, confirmationRequests: [], confirmResult: true, validityChecks: 0, destinations: [], deviceRegistration: null };
   const from = name === 'start' ? { ...ui(pagePath), tab: { id: 7 }, frameId: 0, documentId: 'shortcut-document' } : ui(pagePath);
   if (name === 'start') f.frames.set(7, { url: from.url, documentId: from.documentId });
   const api = async message => {
@@ -49,6 +50,8 @@ async function page(name, f = fixture()) {
     localize: (node, render, attribute) => attribute ? node.setAttribute(attribute, render()) : node.textContent = render(),
     status: (node, message, error = false) => { node.textContent = message; node.error = error; },
     date: value => String(value), initializeLocale: async () => {}, getLocale: () => 'en-US', setLocale: async () => {},
+    registerDevice: async () => { if (!state.deviceRegistration) throw new Error('Device verification unavailable'); return state.deviceRegistration; },
+    verifyDevice: async () => state.deviceVerification || '',
     duoOrigin: value => { const url = new URL(value); if (!url.hostname.endsWith('.duosecurity.com')) throw new Error('Invalid Duo URL'); return url.origin; },
     Option: function(text, value) { return new Element('option', { value }, text); },
     confirm: message => { state.confirmationRequests.push(message); return state.confirmResult; },
@@ -177,18 +180,159 @@ test('Settings describes password, passkey, and PIN encryption from their saved 
     'Your passkeys have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.');
 });
 
-test('saving a PIN does not overwrite the account draft', async () => {
+test('passphrase setup requires a matching second entry before saving and shows its saved state', async () => {
   const p = await page('settings');
   p.nodes['pin-settings'].open = true;
   await p.nodes['pin-settings'].emit('toggle');
   p.nodes.password.value = 'draft-password';
+  assert.equal(p.nodes['passphrase-state-text'].textContent, 'Verification passphrase not set');
+  assert.equal(p.nodes['passphrase-check'].hidden, true);
   p.nodes['new-pin'].value = 'new-pin-value';
   await p.nodes['pin-form'].emit('submit');
+  assert.equal(p.calls.some(call => call.type === 'UI_PIN'), false);
+  assert.equal((await p.f.vault.read()).pin, null);
+  assert.equal(p.nodes['pin-form'].hidden, true);
+  assert.equal(p.nodes['pin-confirm-form'].hidden, false);
+  assert.equal(p.nodes['new-pin'].value, '');
+  p.nodes['confirm-pin'].value = 'does-not-match';
+  await p.nodes['pin-confirm-form'].emit('submit');
+  assert.equal(p.nodes['pin-status'].error, true);
+  assert.equal(p.calls.some(call => call.type === 'UI_PIN'), false);
+  p.nodes['confirm-pin'].value = 'new-pin-value';
+  await p.nodes['pin-confirm-form'].emit('submit');
   assert.ok((await p.f.vault.read()).pin);
+  assert.equal(p.calls.filter(call => call.type === 'UI_PIN').length, 1);
+  assert.equal(p.nodes['passphrase-state-text'].textContent, 'Verification passphrase set');
+  assert.equal(p.nodes['passphrase-check'].hidden, false);
+  assert.equal(p.nodes['passphrase-state'].className, 'auth-state ready');
+  assert.equal(p.nodes['pin-form'].hidden, false);
+  assert.equal(p.nodes['pin-confirm-form'].hidden, true);
   assert.equal(p.nodes['pin-storage-help-text'].textContent,
     'Your verification passphrase protects the local encryption key and is used for sign-in verification.');
   assert.equal(p.nodes.password.value, 'draft-password');
   assert.equal(p.nodes['new-pin'].value, '');
+  assert.equal(p.nodes['confirm-old-pin'], undefined);
+  const reopened = await page('settings', p.f);
+  assert.equal(reopened.nodes['passphrase-state-text'].textContent, 'Verification passphrase set');
+  assert.equal(reopened.nodes['passphrase-check'].hidden, false);
+});
+
+test('changing a saved passphrase requires matching new entries without a current-passphrase field', async () => {
+  const f = fixture({ pin: await newPin('current-passphrase') });
+  const p = await page('settings', f);
+  assert.equal(p.nodes['confirm-old-pin'], undefined);
+  assert.equal(p.nodes['passphrase-check'].hidden, false);
+  p.nodes['new-pin'].value = 'replacement-passphrase';
+  await p.nodes['pin-form'].emit('submit');
+  p.nodes['confirm-pin'].value = 'replacement-passphrase';
+  const oldHash = (await f.vault.read()).pin.hash;
+  await p.nodes['pin-confirm-form'].emit('submit');
+  assert.equal(p.nodes['pin-status'].error, false);
+  assert.equal(p.nodes['passphrase-state-text'].textContent, 'Verification passphrase set');
+  assert.equal(p.calls.filter(call => call.type === 'UI_PIN').length, 1);
+  assert.equal(Object.hasOwn(p.calls.find(call => call.type === 'UI_PIN'), 'oldPin'), false);
+  assert.notEqual((await f.vault.read()).pin.hash, oldHash);
+});
+
+test('removing a saved passphrase preserves the account and updates its status', async () => {
+  const f = fixture();
+  const vault = new Vault(memoryRepository(), f.api.storage.session);
+  await vault.write({ ...emptyVault(), username: 'test-student', password: 'test-only-password' });
+  await vault.setPin('current-passphrase');
+  f.controller.vault = vault;
+  const p = await page('settings', f);
+  assert.equal(p.nodes['remove-pin-actions'].hidden, false);
+  await p.nodes['remove-pin'].emit('click');
+  assert.equal(p.calls.filter(call => call.type === 'UI_PIN_REMOVE').length, 1);
+  assert.equal((await vault.protection()).mode, 'none');
+  assert.equal((await vault.read()).password, 'test-only-password');
+  assert.equal(p.nodes['passphrase-state-text'].textContent, 'Verification passphrase not set');
+  assert.equal(p.nodes['passphrase-check'].hidden, true);
+  assert.equal(p.nodes['remove-pin-actions'].hidden, true);
+});
+
+test('device verification displays a saved check and defers its passphrase field until turn-off', async () => {
+  const f = fixture();
+  const vault = new Vault(memoryRepository(), f.api.storage.session);
+  await vault.write({ ...emptyVault(), username: 'test-student', password: 'test-only-password' });
+  const secret = b64(crypto.getRandomValues(new Uint8Array(32)));
+  await vault.setDevice('device-test-id', secret,
+    b64(crypto.getRandomValues(new Uint8Array(32))));
+  f.controller.vault = vault;
+  const p = await page('settings', f);
+  assert.equal(p.nodes['device-state-text'].textContent, 'Device verification enabled');
+  assert.equal(p.nodes['device-check'].hidden, false);
+  assert.equal(p.nodes['device-state'].className, 'auth-state ready');
+  assert.equal(p.nodes['pin-form'].hidden, true);
+  assert.equal(p.nodes['device-new-pin-field'].hidden, true);
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal(p.nodes['device-new-pin-field'].hidden, false);
+  assert.equal(p.nodes['device-confirm-pin-field'].hidden, false);
+  assert.equal(p.nodes['device-cancel'].hidden, false);
+  await p.nodes['device-cancel'].emit('click');
+  assert.equal(p.nodes['device-new-pin-field'].hidden, true);
+  assert.equal(p.nodes['device-check'].hidden, false);
+  await p.nodes['device-toggle'].emit('click');
+  p.state.deviceVerification = secret;
+  p.nodes['device-new-pin'].value = 'fallback-passphrase';
+  p.nodes['device-confirm-pin'].value = 'mismatch';
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal((await vault.protection()).mode, 'device');
+  assert.equal(p.nodes['device-status'].error, true);
+  p.nodes['device-new-pin'].value = 'fallback-passphrase';
+  p.nodes['device-confirm-pin'].value = 'fallback-passphrase';
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal((await vault.protection()).mode, 'pin');
+  assert.equal(p.nodes['device-check'].hidden, true);
+  assert.equal(p.nodes['device-state-text'].textContent, 'Device verification not enabled');
+  assert.equal(p.nodes['passphrase-check'].hidden, false);
+});
+
+test('enabling device verification shows its green saved state after registration', async () => {
+  const f = fixture();
+  const vault = new Vault(memoryRepository(), f.api.storage.session);
+  await vault.write({ ...emptyVault(), username: 'test-student', password: 'test-only-password' });
+  f.controller.vault = vault;
+  const p = await page('settings', f);
+  assert.equal(p.nodes['device-state-text'].textContent, 'Device verification not enabled');
+  assert.equal(p.nodes['device-check'].hidden, true);
+  p.state.deviceRegistration = {
+    credentialId: 'device-test-id',
+    secret: b64(crypto.getRandomValues(new Uint8Array(32))),
+    prfSalt: b64(crypto.getRandomValues(new Uint8Array(32)))
+  };
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal(p.calls.filter(call => call.type === 'UI_DEVICE_SET').length, 1);
+  assert.equal((await vault.protection()).mode, 'device');
+  assert.equal(p.nodes['device-state-text'].textContent, 'Device verification enabled');
+  assert.equal(p.nodes['device-check'].hidden, false);
+  assert.equal(p.nodes['device-state'].className, 'auth-state ready');
+  assert.equal(p.nodes['device-new-pin-field'].hidden, true);
+});
+
+test('turning off device verification sets a newly confirmed passphrase', async () => {
+  const f = fixture();
+  const vault = new Vault(memoryRepository(), f.api.storage.session);
+  await vault.write({ ...emptyVault(), username: 'test-student', password: 'test-only-password' });
+  await vault.setPin('previous-passphrase');
+  const secret = b64(crypto.getRandomValues(new Uint8Array(32)));
+  await vault.setDevice('device-test-id', secret, b64(crypto.getRandomValues(new Uint8Array(32))));
+  f.controller.vault = vault;
+  const p = await page('settings', f);
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal(p.nodes['device-new-pin-field'].hidden, false);
+  assert.equal(p.nodes['device-confirm-pin-field'].hidden, false);
+  p.nodes['device-new-pin'].value = 'replacement-passphrase';
+  p.nodes['device-confirm-pin'].value = 'replacement-passphrase';
+  p.state.deviceVerification = secret;
+  await p.nodes['device-toggle'].emit('click');
+  assert.equal((await vault.protection()).mode, 'pin');
+  assert.equal(p.nodes['passphrase-check'].hidden, false);
+  assert.equal(p.nodes['device-check'].hidden, true);
+  assert.equal(p.calls.filter(call => call.type === 'UI_DEVICE_OFF').length, 1);
+  await vault.forget();
+  assert.equal(await vault.unlockPin('previous-passphrase'), false);
+  assert.equal(await vault.unlockPin('replacement-passphrase'), true);
 });
 
 test('the power icon persists immediately and remains paused when reopened', async () => {
