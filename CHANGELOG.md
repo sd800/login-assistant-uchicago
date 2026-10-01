@@ -4,6 +4,16 @@
 
 Changes by release, newest first.
 
+## 1.8.3 - 2026-10-01
+
+### Changed
+
+- Refined the privacy and security guidance in both README languages.
+
+### Verification
+
+- Static and documentation checks pass.
+
 ## 1.8.2 - 2026-10-01
 
 ### Changed

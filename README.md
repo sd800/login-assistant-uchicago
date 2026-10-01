@@ -14,7 +14,7 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.8.2
+Current version: 1.8.3
 
 Release date: October 1, 2026
 
@@ -35,9 +35,11 @@ To update, replace the project files in the same folder, choose **Reload** on `c
 
 In **Settings → Account**, enter your **CNetID or UCMEDID** and **Password**, then choose **Save**. Enter these details in the extension; it does not import passwords from Chrome's password manager. Keep the assistant enabled using the power icon in its popup.
 
-In **Settings → Authorization step**, set a **Verification passphrase** or enable **Device verification**. To set or change a passphrase, enter 6–128 characters and choose **Save**, then enter the same passphrase again and choose **Confirm**. The passphrase is saved only after the entries match. A green check shows when it is set. **Remove verification passphrase** removes it while keeping your saved account and passkeys.
+In **Settings → Authorization step**, use **Device verification** or set a **Verification passphrase**.
 
-Device verification uses Chrome's system prompt, such as Touch ID or Windows Hello. Chrome chooses the available method. A green check shows when device verification is enabled. To turn it off, enter and confirm a new passphrase, then complete Chrome's device prompt. The device must support deriving an encryption key from its credential; otherwise it cannot be enabled.
+If you choose **Device verification** (recommended), Chrome uses its system prompt, such as Touch ID or Windows Hello. Chrome chooses the available method. A green check shows when device verification is enabled. To turn it off, enter and confirm a new passphrase, then complete Chrome's device prompt. The device must support deriving an encryption key from its credential; otherwise it cannot be enabled.
+
+To set or change a **Verification passphrase**, enter 6–128 characters and choose **Save**, then enter the same passphrase again and choose **Confirm**. The passphrase is saved only after the entries match. A green check shows when it is set.
 
 ### Add a Duo passkey
 
@@ -94,12 +96,12 @@ The verification passphrase differs from your school password and device PIN. Fi
 
 ## Privacy and security
 
-Your account information and passkey private keys are encrypted in the extension's local IndexedDB with AES-256-GCM. The authorization step protects the vault's encryption key: the verification passphrase derives a wrapping key with PBKDF2-SHA-256, while supported device verification derives one with WebAuthn PRF. The extension keeps the unlocked key in Chrome's in-memory extension session while the browser is open. A device that lacks PRF support is not enabled for device verification.
+Your saved username, password, and passkey private keys are encrypted in this Chrome profile with AES-256-GCM using the browser's Web Crypto API. The extension generates a random encryption key. A verification passphrase protects that key through PBKDF2-SHA-256; supported device verification uses WebAuthn PRF. The passphrase is not saved as readable text. Device verification or a long, unique verification passphrase provides the strongest local protection this extension offers. If neither authorization method is active, the data remains encrypted, but sign-in no longer requires that additional verification step.
 
-- No developer server receives your data. The extension includes no analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
-- Account credentials are filled only on recognized UChicago Okta sign-in pages after approval. Passkey responses are restricted to Duo pages admitted into that flow; private keys remain local.
-- The extension does not fill account information or automate pages on intermediate and destination sites.
-- Recent activity keeps at most 20 entries from the past 24 hours, excluding passwords, private keys, and full sign-in URLs. Older entries are deleted during periodic cleanup, at startup, and when activity is read or added.
+- Each sign-in requires your confirmation. Approval is limited to the current tab and account for up to five minutes. Before using saved credentials, the extension checks the current page, HTTPS origin, and approved sign-in flow.
+- Your password is filled only on recognized UChicago Okta sign-in pages. Passkeys are generated locally: Duo registers their public keys, while private keys stay on your device and sign only compatible requests in the approved Duo flow. Intermediate and destination sites receive no account details from the extension.
+- No developer server receives your data. The extension has no analytics, advertising, or cloud sync, and it does not read Chrome's password manager. During confirmed passkey setup, it clears scoped school sign-in cookies to start a fresh session; it does not save their values.
+- Recent activity keeps at most 20 entries from the past 24 hours, without passwords, private keys, or full sign-in URLs. Older entries are deleted automatically.
 
 ### Permissions
 
