@@ -1,5 +1,5 @@
 import { randomId } from '../extension/core/encoding.js';
-import { emptyVault } from '../extension/core/vault.js';
+import { emptyVault, newPin } from '../extension/core/vault.js';
 import { Controller } from '../extension/core/controller.js';
 
 export const DUO = 'https://api-test123.duosecurity.com';
@@ -13,11 +13,21 @@ export function creation(overrides = {}) {
 export const assertion = (credential, overrides = {}) => ({ rpId: credential.rpId, challenge: randomId(), allowCredentials: [{ type: 'public-key', id: credential.id }], userVerification: 'discouraged', ...overrides });
 export function memoryRepository() {
   const map = new Map();
-  return { map, async get(key) { return map.get(key); }, async set(key, value) { map.set(key, value); } };
+  return { map, async get(key) { return map.get(key); }, async set(key, value) { map.set(key, value); },
+    async replaceV2(value) { map.set('v2', value); map.delete('key'); map.delete('payload'); },
+    async replaceLegacy(key, payload) { map.set('key', key); map.set('payload', payload); map.delete('v2'); },
+    async clear() { map.clear(); } };
 }
 function storage(initial = {}, notify = () => {}) {
   const data = structuredClone(initial);
-  return { data, async get(key) { return { [key]: structuredClone(data[key]) }; }, async set(value) {
+  return { data, async get(key) { return { [key]: structuredClone(data[key]) }; },
+    async remove(key) { delete data[key]; }, async clear() {
+      const changes = Object.fromEntries(Object.entries(data).map(([key, oldValue]) =>
+        [key, { oldValue: structuredClone(oldValue), newValue: undefined }]));
+      for (const key of Object.keys(data)) delete data[key];
+      if (Object.keys(changes).length) notify(changes);
+    },
+    async set(value) {
     const changes = {};
     for (const [key, next] of Object.entries(value)) if (JSON.stringify(data[key]) !== JSON.stringify(next)) {
       changes[key] = { oldValue: structuredClone(data[key]), newValue: structuredClone(next) };
@@ -108,7 +118,11 @@ export function fixture(data = {}) {
       async registerContentScripts(values) { values.forEach(value => scripts.set(value.id, value)); }
     }
   };
-  const vault = { async read() { return structuredClone(vaultData); }, async write(value) { vaultData = structuredClone(value); } };
+  const vault = { async read() { return structuredClone(vaultData); }, async write(value) { vaultData = structuredClone(value); },
+    async clear() { vaultData = emptyVault(); }, async setPin(pin) { vaultData.pin = pin ? await newPin(pin) : null; },
+    async protection() { const data = await this.read(); return { mode: 'none', locked: false, hasAccount: !!data.username,
+      hasPassword: !!data.password, hasPasskeys: !!data.credentials.length,
+      hasPin: !!data.pin, credentialId: '', prfSalt: '' }; } };
   const controller = new Controller(api, vault, () => now);
   return {
     controller, api, vault, frames, windows, scripts, permissions, sent, rules, ruleUpdates, reloaded, cookieOps, tabUpdates,

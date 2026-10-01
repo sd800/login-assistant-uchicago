@@ -22,9 +22,10 @@
         <label for="choices" data-i18n>Passkey</label><select id="choices"></select>
       </div>
       <div class="field" id="pin-field" hidden>
-        <label id="pin-label" for="pin" data-i18n>Verification PIN (optional)</label>
+        <label id="pin-label" for="pin" data-i18n>Verification passphrase</label>
         <input id="pin" type="password" autocomplete="off" maxlength="128" aria-describedby="pin-help">
-        <p class="help" id="pin-help" data-i18n>Use your extension PIN, not your school password.</p>
+        <p class="help" id="pin-help" data-i18n>Enter the passphrase saved in this extension.</p>
+        <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
       </div>
       <p class="notice" id="notice" hidden></p>
       <div class="status" id="status" role="status" aria-live="polite"></div>

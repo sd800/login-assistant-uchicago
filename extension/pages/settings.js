@@ -1,12 +1,13 @@
 import { $, api, status, date, t, bindText, localize, initializeLocale, getLocale, setLocale } from '../ui/ui.js';
+import { registerDevice, verifyDevice } from '../ui/device-auth.js';
 let snapshot;
 const PASSWORD_WILL_BE_SAVED = "Your username and password will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSWORD_HAS_BEEN_SAVED = "Your username and password have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSKEYS_WILL_BE_SAVED = "Passkeys will be securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSKEY_HAS_BEEN_SAVED = "Your passkey has been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
 const PASSKEYS_HAVE_BEEN_SAVED = "Your passkeys have been securely saved on this device using industry-standard encryption, and will only be used for each sign-in you explicitly authorize.";
-const PIN_WILL_BE_SAVED = "If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.";
-const PIN_HAS_BEEN_SAVED = "Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.";
+const PIN_WILL_BE_SAVED = "Set a verification passphrase to protect the local encryption key and authorize sign-in.";
+const PIN_HAS_BEEN_SAVED = "Your verification passphrase protects the local encryption key and is used for sign-in verification.";
 function passwordIsSaved() {
   return !!snapshot?.hasPassword && $('username').value.trim() === snapshot.username;
 }
@@ -45,6 +46,16 @@ function showDuoMode() {
 async function load({ account = false, pin = false } = {}) {
   const next = await api({ type: 'UI_GET' });
   snapshot = next;
+  $('locked-panel').hidden = !snapshot.locked;
+  $('settings-protected').hidden = !!snapshot.locked;
+  $('unlock-passphrase-field').hidden = !['pin', 'pin-legacy'].includes(snapshot.authMode);
+  bindText($('unlock-button'), snapshot.authMode === 'device' ? 'Verify with device' : 'Unlock');
+  if (snapshot.locked) return;
+  bindText($('device-toggle'), snapshot.authMode === 'device' ? 'Turn off device verification' : 'Enable device verification');
+  $('device-old-pin-field').hidden = snapshot.authMode !== 'device';
+  $('device-old-pin').required = snapshot.authMode === 'device';
+  $('passphrase-settings').hidden = snapshot.authMode === 'device';
+  bindText($('device-passphrase-label'), snapshot.hasPin ? 'Current verification passphrase' : 'New verification passphrase');
   // Refresh only the saved section. Other forms keep their current drafts.
   if (account) { $('username').value = snapshot.username; $('password').value = ''; }
   passwordRequirement();
@@ -146,12 +157,49 @@ $('add-passkey').addEventListener('click', async event => {
 });
 $('pin-form').addEventListener('submit', async event => {
   event.preventDefault(); if (!event.isTrusted) return;
-  try { await api({ type: 'UI_PIN', oldPin: $('old-pin').value, newPin: $('new-pin').value }); await load({ pin: true }); status($('pin-status'), "Verification PIN updated."); }
-  catch (error) { status($('pin-status'), error.message, true); }
+  try { await api({ type: 'UI_PIN', oldPin: $('old-pin').value, newPin: $('new-pin').value }); await load({ pin: true }); status($('pin-status'), 'Verification passphrase saved.'); }
+  catch (error) { status($('pin-status'), error.message, true); await load().catch(() => {}); }
   finally { $('old-pin').value = ''; $('new-pin').value = ''; }
 });
+$('unlock-form').addEventListener('submit', async event => {
+  event.preventDefault(); if (!event.isTrusted || !snapshot?.locked) return;
+  $('unlock-button').disabled = true;
+  try {
+    if (snapshot.authMode === 'device') {
+      const secret = await verifyDevice(snapshot.deviceCredentialId, snapshot.prfSalt);
+      await api({ type: 'UI_UNLOCK_DEVICE', credentialId: snapshot.deviceCredentialId, secret });
+    } else await api({ type: 'UI_UNLOCK_PIN', pin: $('unlock-passphrase').value });
+    $('unlock-passphrase').value = '';
+    await load({ account: true, pin: true });
+  } catch (error) {
+    $('unlock-passphrase').value = '';
+    status($('unlock-status'), error.message, true);
+    await load().catch(() => {});
+  } finally { $('unlock-button').disabled = false; }
+});
+$('device-toggle').addEventListener('click', async event => {
+  if (!event.isTrusted || $('device-toggle').disabled) return;
+  $('device-toggle').disabled = true;
+  try {
+    if (snapshot.authMode === 'device') {
+      if (!$('device-old-pin').value) throw new Error('Enter your verification passphrase.');
+      const secret = await verifyDevice(snapshot.deviceCredentialId, snapshot.prfSalt);
+      await api({ type: 'UI_DEVICE_OFF', credentialId: snapshot.deviceCredentialId, secret, passphrase: $('device-old-pin').value });
+    } else {
+      const device = await registerDevice();
+      await api({ type: 'UI_DEVICE_SET', ...device });
+    }
+    $('device-old-pin').value = '';
+    await load({ account: true, pin: true });
+    status($('device-status'), 'Authorization step updated.');
+  } catch (error) {
+    $('device-old-pin').value = '';
+    status($('device-status'), error.message, true);
+    await load().catch(() => {});
+  } finally { $('device-toggle').disabled = false; }
+});
 $('clear').addEventListener('click', async event => {
-  if (!event.isTrusted || !confirm(t("Delete local data? Your saved account, password, passkeys, and PIN will be removed. Settings, language, and activity will also be reset. This cannot be undone. Make sure you have another way to verify with Duo."))) return;
+  if (!event.isTrusted || !confirm(t('Delete local data? Your saved account, password, passkeys, and verification passphrase will be removed. Settings, language, and activity will also be reset. This cannot be undone. Make sure you have another way to verify with Duo.'))) return;
   try { await api({ type: 'UI_CLEAR' }); await load({ account: true, pin: true }); status($('clear-status'), "Local data deleted."); }
   catch (error) { status($('clear-status'), error.message, true); }
 });

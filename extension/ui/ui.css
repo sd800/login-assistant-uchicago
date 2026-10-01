@@ -135,8 +135,11 @@ input[type=radio] { accent-color:var(--wine); width:16px; height:16px; margin:0;
 .disclosure { border-top:1px solid var(--line); padding:18px 0; }
 .disclosure summary { cursor:pointer; font-size:13px; font-weight:500; width:100%; }
 .disclosure summary::marker { color:var(--muted); font-size:10px; }
+#pin-settings > summary span { margin-inline-start:.35em; }
 .disclosure-body { padding-top:17px; }
+.disclosure-body > h3 { margin:20px 0 10px; }
 #pin-form { margin-top:20px; }
+#passphrase-settings > h3 { margin:20px 0 10px; }
 .credential { display:flex; align-items:flex-start; gap:14px; border-top:1px solid var(--line); padding:14px 0; }
 .credential:first-child { border-top:none; padding-top:0; }
 .credential:last-child { padding-bottom:0; }

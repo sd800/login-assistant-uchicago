@@ -1,12 +1,14 @@
 import { $, api, status, bindText, localize, t, initializeLocale } from '../ui/ui.js';
 import { CONFIRM_TEXT } from '../core/policy.js';
 import { PORTAL_URL, SHORTCUT_PAGE } from '../core/shortcut.js';
+import { verifyDevice } from '../ui/device-auth.js';
 const inline = new URL(location.href).pathname === '/' + SHORTCUT_PAGE;
 let id = new URL(location.href).searchParams.get('id');
 let request;
 let busy = false;
 function approvalUnavailable() {
-  return !request || request.fallbackOnly || request.deadline <= Date.now() || (request.requireUV && !request.hasPin);
+  return !request || request.fallbackOnly || request.deadline <= Date.now() ||
+    (request.requireUV && !request.hasPin && request.authMode !== 'device');
 }
 async function decide(action) {
   if (busy) return;
@@ -15,7 +17,12 @@ async function decide(action) {
   $('approve').disabled = true;
   $('enroll').disabled = true;
   try {
-    const result = await api({ type: inline ? 'SHORTCUT_DECIDE' : 'PROMPT_DECIDE', id, action, pin: $('pin').value, credentialId: request?.credentialId || $('choices').value });
+    const deviceRequired = action === 'approve' && request.authMode === 'device' &&
+      (['login', 'setup'].includes(request.kind) || request.requireUV);
+    const deviceSecret = deviceRequired ? await verifyDevice(request.deviceCredentialId, request.prfSalt) : undefined;
+    const result = await api({ type: inline ? 'SHORTCUT_DECIDE' : 'PROMPT_DECIDE', id, action,
+      pin: $('pin').value, deviceSecret, deviceCredentialId: deviceRequired ? request.deviceCredentialId : undefined,
+      credentialId: request?.credentialId || $('choices').value });
     $('pin').value = '';
     if (inline && result.target) location.replace(result.target); else window.close();
   } catch (error) {
@@ -76,14 +83,18 @@ try {
   }
   $('approve').hidden = request.fallbackOnly === true;
   $('enroll').hidden = !request.allowEnrollment || request.kind === 'repair';
-  $('pin-field').hidden = ['setup', 'repair'].includes(request.kind) || !request.hasPin || request.fallbackOnly === true || (request.kind === 'login' && request.automaticDuo === false);
-  if (request.requireUV) { bindText($('pin-label'), "Verification PIN"); $('pin').required = true; }
+  $('pin-field').hidden = request.authMode === 'device' || !request.hasPin || request.fallbackOnly === true ||
+    (['pin', 'pin-legacy'].includes(request.authMode) ? !['login', 'setup'].includes(request.kind) && !request.requireUV :
+      ['setup', 'repair'].includes(request.kind) || request.kind === 'login' && request.automaticDuo === false);
+  if (['pin', 'pin-legacy'].includes(request.authMode) && ['login', 'setup'].includes(request.kind) || request.requireUV && request.authMode !== 'device') {
+    bindText($('pin-label'), 'Verification passphrase'); $('pin').required = true;
+  }
   if (request.notice) {
     $('notice').hidden = false;
     bindText($('notice'), request.notice);
   } else if (request.requireUV && !request.hasPin) {
     $('notice').hidden = false;
-    bindText($('notice'), "Duo requires identity verification. Use another passkey provider, or set a verification PIN in settings and try again.");
+    bindText($('notice'), 'Duo requires identity verification. Use another passkey provider or set a verification passphrase in settings and try again.');
   } else if (request.kind === 'setup') {
     $('notice').hidden = false;
     bindText($('notice'), "The assistant will sign in with your saved account and help you add a Duo passkey. If Duo asks you to verify your identity, complete that step to continue.");

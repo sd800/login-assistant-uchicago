@@ -83,7 +83,7 @@ export async function createCredential({ options, origin, configuredOrigin, cred
   const id = randomId();
   const idBytes = unb64(id);
   const cose = cbor(new Map([[1, 2], [3, -7], [-1, 1], [-2, unb64(publicKey.x)], [-3, unb64(publicKey.y)]]));
-  const flags = 0x41 | (proof.uv ? 0x04 : 0); // Set UP and AT; set UV only for a verified PIN.
+  const flags = 0x41 | (proof.uv ? 0x04 : 0); // Set UP and AT; set UV only after the authorization step.
   const authData = concat(await sha256(utf8(rpId)), Uint8Array.of(flags), uint32(0), new Uint8Array(16), Uint8Array.of(0, idBytes.length), idBytes, cose);
   const discoverable = options.authenticatorSelection?.residentKey !== 'discouraged';
   const credential = { id, rpId, userId: options.user.id, userName: options.user.name, publicKey, privateKey, discoverable, signCount: 0, createdAt: Date.now(), lastUsedAt: null };

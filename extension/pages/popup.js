@@ -10,9 +10,9 @@ async function load() {
   enabled = data.enabled;
   drawToggle();
   $('toggle').disabled = false;
-  localize($('account'), () => data.username || t("No account saved"));
-  const accountSaved = !!data.username && data.hasPassword;
-  const passkeySaved = data.credentials.length > 0;
+  localize($('account'), () => data.locked ? t('Local data locked') : data.username || t("No account saved"));
+  const accountSaved = (data.hasAccount || !!data.username) && data.hasPassword;
+  const passkeySaved = data.hasPasskeys || data.credentials.length > 0;
   $('account-saved').hidden = !accountSaved;
   $('passkey-saved').hidden = !passkeySaved;
   $('saved-indicators').hidden = !accountSaved && !passkeySaved;

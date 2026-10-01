@@ -100,6 +100,47 @@ test('vault can reopen with a nonextractable persisted key', async () => {
   assert.equal(repo.map.get('key').extractable, false);
   await assert.rejects(crypto.subtle.exportKey('raw', repo.map.get('key')));
 });
+test('a verification passphrase wraps the migrated vault key and is required after session reset', async () => {
+  const repo = memoryRepository();
+  const memory = {};
+  const session = { async get(key) { return { [key]: memory[key] }; }, async set(value) { Object.assign(memory, value); },
+    async remove(key) { delete memory[key]; } };
+  const vault = new Vault(repo, session);
+  const data = await vault.read(); data.username = 'test-student'; data.password = 'test-only-password';
+  await vault.write(data);
+  await vault.setPin('a long test passphrase');
+  assert.equal(repo.map.has('key'), false);
+  assert.equal(repo.map.has('payload'), false);
+  await session.remove('vaultUnlock');
+  assert.equal((await vault.protection()).locked, true);
+  await assert.rejects(vault.read(), /Unlock local data/);
+  assert.equal(await vault.unlockPin('wrong passphrase'), false);
+  assert.equal(await vault.unlockPin('a long test passphrase'), true);
+  assert.equal((await vault.read()).password, 'test-only-password');
+  await vault.clear();
+  assert.equal(repo.map.size, 0);
+});
+test('device protection replaces the passphrase wrapper and switches back atomically', async () => {
+  const repo = memoryRepository(); const values = {};
+  const session = { async get(key) { return { [key]: values[key] }; }, async set(input) { Object.assign(values, input); },
+    async remove(key) { delete values[key]; } };
+  const vault = new Vault(repo, session);
+  const data = await vault.read(); data.password = 'protected-test-password'; await vault.write(data);
+  await vault.setPin('first-passphrase');
+  const deviceSecret = b64(crypto.getRandomValues(new Uint8Array(32)));
+  await vault.setDevice('device-id', deviceSecret, b64(crypto.getRandomValues(new Uint8Array(32))));
+  assert.equal(repo.map.get('v2').mode, 'device');
+  assert.equal(repo.map.get('v2').pin, undefined);
+  await vault.forget();
+  assert.equal(await vault.unlockPin('first-passphrase').catch(() => false), false);
+  assert.equal(await vault.unlockDevice(deviceSecret, 'device-id'), true);
+  await vault.switchToPin('next-passphrase');
+  assert.equal(repo.map.get('v2').device, undefined);
+  assert.equal(repo.map.get('v2').mode, 'pin');
+  await vault.forget();
+  assert.equal(await vault.unlockPin('next-passphrase'), true);
+  assert.equal((await vault.read()).password, 'protected-test-password');
+});
 test('PIN verifies only the supplied correct value and is salted', async () => {
   const pin = await newPin('123456-test'); const second = await newPin('123456-test');
   assert.notEqual(pin.hash, second.hash);

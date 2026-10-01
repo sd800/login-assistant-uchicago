@@ -20,8 +20,9 @@ export class Controller {
   }
   exclusive(fn) {
     const task = this.tail.then(async () => {
+      this.wiped = false;
       this.state = (await this.api.storage.session.get('state')).state || emptyState();
-      try { return await fn(); } finally { await this.api.storage.session.set({ state: this.state }); }
+      try { return await fn(); } finally { if (!this.wiped) await this.api.storage.session.set({ state: this.state }); }
     });
     this.tail = task.catch(() => {});
     return task;
@@ -172,8 +173,8 @@ export class Controller {
     let wanted = false;
     if (settings.enabled && await this.hasShortcutAccess()) {
       // Leave the normal portal available if the account cannot be loaded.
-      const data = await this.vault.read().catch(() => null);
-      wanted = !!data?.username && !!data?.password;
+      const protection = await this.vault.protection().catch(() => null);
+      wanted = !!protection?.hasAccount && !!protection?.hasPassword;
     }
     const current = await this.api.declarativeNetRequest.getDynamicRules({ ruleIds: [SHORTCUT_RULE_ID] });
     const rule = shortcutRule(), existing = current[0];
@@ -199,12 +200,14 @@ export class Controller {
     if (message.type === 'SHORTCUT_DECIDE' && message.action === 'cancel') return this.shortcutPortal(sender);
     if (!settings.enabled || !await this.hasShortcutAccess()) return this.shortcutPortal(sender);
     if (message.type === 'SHORTCUT_OPEN') {
-      const data = await this.vault.read();
-      if (!data.username || !data.password) return this.shortcutPortal(sender);
+      const protection = await this.vault.protection();
+      if (!protection.hasAccount || !protection.hasPassword) return this.shortcutPortal(sender);
       const result = await this.requestLogin(sender, settings, 'myuchicago', true);
       const flow = this.state.flows[sender.tab.id];
       const prompt = Object.values(this.state.prompts).find(p => p.inline && p.flowId === flow?.id);
-      return result.status === 'asking' && prompt ? { ...prompt, hasPin: !!data.pin } : this.shortcutPortal(sender);
+      return result.status === 'asking' && prompt ? { ...prompt, hasPin: protection.hasPin,
+        authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt }
+        : this.shortcutPortal(sender);
     }
     if (message.type !== 'SHORTCUT_DECIDE' || message.action !== 'approve') throw new Error("Unrecognized confirmation action.");
     await this.promptMessage({ ...message, type: 'PROMPT_DECIDE' }, sender, settings, true);
@@ -246,20 +249,21 @@ export class Controller {
       await this.releaseFlowTab(flow);
     }
     if (flow?.documentId === sender.documentId && ['asking', 'cancelled', 'error', 'expired'].includes(flow.status)) return { status: flow.status };
-    const data = await this.vault.read();
-    if (!data.username || !data.password) return { status: 'needs-setup' };
-    const selected = await this.selectAccountCredential(data, settings);
+    const protection = await this.vault.protection();
+    if (!protection.hasAccount || !protection.hasPassword) return { status: 'needs-setup' };
+    const data = protection.locked ? null : await this.vault.read();
+    const selected = data ? await this.selectAccountCredential(data, settings) : null;
     const intent = this.state.setups?.[sender.tab.id];
     const setup = (typeof intent === 'number' ? intent : intent?.deadline) > this.now() &&
-      (typeof intent === 'number' || intent.username === data.username);
+      (typeof intent === 'number' || intent.username === data?.username);
     const approvedSetup = setup && intent.approved === true;
-    const replacement = !setup && !selected && data.credentials.some(c =>
+    const replacement = !setup && !selected && !!data?.credentials.some(c =>
       c.rejectedAt && sameAccount(c.accountUsername || c.userName, data.username));
     if (this.state.setups) delete this.state.setups[sender.tab.id];
     const guidedSetup = setup || replacement;
     const next = {
-      duo: { phase: guidedSetup || (settings.automaticLogin && selected) ? 'start' : 'manual',
-        mode: guidedSetup || !selected ? 'enroll' : 'login', setup: guidedSetup, replacement },
+      duo: { phase: guidedSetup || (settings.automaticLogin && (selected || protection.hasPasskeys)) ? 'start' : 'manual',
+        mode: guidedSetup || !(selected || protection.hasPasskeys) ? 'enroll' : 'login', setup: guidedSetup, replacement },
       id: randomId(), tabId: sender.tab.id, documentId: sender.documentId,
       entryKind, shortcut: inline, stage: entryKind ? 'entry' : 'auth', authOrigin: entryKind ? '' : OKTA_ORIGIN,
       authDocumentId: sender.documentId, status: approvedSetup ? 'active' : 'asking',
@@ -268,7 +272,7 @@ export class Controller {
     this.state.flows[sender.tab.id] = next;
     if (approvedSetup) {
       next.expiresAt = intent.deadline;
-      this.authorizePasskeys(next, credentialsForAccount(data.credentials, data.username, settings.selectedCredentialId), data.username, false);
+      if (data) this.authorizePasskeys(next, credentialsForAccount(data.credentials, data.username, settings.selectedCredentialId), data.username, false);
       await this.protectFlowTab(next);
       await this.note("Sign-in approved.");
       return { status: 'active' };
@@ -276,8 +280,9 @@ export class Controller {
     await this.showPrompt({
       kind: 'login', inline, tabId: sender.tab.id, documentId: sender.documentId, flowId: next.id,
       origin: new URL(sender.url).origin, entryKind, title: CONFIRM_TEXT,
-      username: data.username, automaticDuo: automatesDuo(next, settings), credentialId: selected?.id, rpId: selected?.rpId,
-      credentialName: selected?.userName, requireUV: false, hasPin: !!data.pin
+      username: data?.username || '', automaticDuo: automatesDuo(next, settings), credentialId: selected?.id, rpId: selected?.rpId,
+      credentialName: selected?.userName, requireUV: false, hasPin: protection.hasPin,
+      authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt
     });
     return { status: 'asking' };
   }
@@ -404,10 +409,54 @@ export class Controller {
     throw new Error("Unsupported message.");
   }
   async uiMessage(message, sender, settings) {
+    const protection = await this.vault.protection();
+    if (message.type === 'UI_UNLOCK_PIN') {
+      this.requireUI(sender, ['pages/settings.html']);
+      if (!['pin', 'pin-legacy'].includes(protection.mode)) throw new Error('Verification passphrase is not active.');
+      if (!await this.checkPin(message.pin)) throw new Error('Incorrect verification passphrase. Try again.');
+      if (protection.mode === 'pin-legacy') await this.vault.setPin(message.pin);
+      return { unlocked: true };
+    }
+    if (message.type === 'UI_UNLOCK_DEVICE') {
+      this.requireUI(sender, ['pages/settings.html']);
+      if (protection.mode !== 'device' || !await this.vault.unlockDevice(message.secret, message.credentialId)) {
+        throw new Error('Device verification did not complete.');
+      }
+      return { unlocked: true };
+    }
+    if (message.type === 'UI_CLEAR') {
+      this.requireUI(sender, ['pages/settings.html']);
+      await this.wipeAll();
+      return { deleted: true };
+    }
+    if (message.type === 'UI_TOGGLE') {
+      await this.api.storage.local.set({ settings: { ...settings, enabled: message.enabled === true } });
+      await this.invalidateAll();
+      await this.syncScripts();
+      return { saved: true };
+    }
+    if (message.type === 'UI_RETRY') {
+      const tab = await this.api.tabs.get(message.tabId);
+      const shortcut = this.isShortcutUrl(tab.url);
+      if (!shortcut && !isOktaLoginUrl(tab.url) && !entryForUrl(tab.url)) throw new Error("Open the assistant from your UChicago sign-in tab.");
+      await this.invalidateTab(tab.id);
+      if (shortcut) await this.api.tabs.reload(tab.id);
+      else await this.api.tabs.sendMessage(tab.id, { type: 'RECHECK' });
+      return { started: true };
+    }
+    if (message.type === 'UI_GET' && protection.locked) return {
+      ...settings, locked: true, authMode: protection.mode, deviceCredentialId: protection.credentialId,
+      prfSalt: protection.prfSalt, username: '', hasAccount: protection.hasAccount,
+      hasPassword: protection.hasPassword, hasPasskeys: protection.hasPasskeys,
+      hasPin: protection.hasPin, credentials: [], history: await this.recentHistory()
+    };
     const data = await this.vault.read();
     if (message.type === 'UI_GET') {
       const selected = await this.selectAccountCredential(data, settings);
-      return { ...settings, canAutomate: !!selected, username: data.username, hasPassword: !!data.password, hasPin: !!data.pin, credentials: data.credentials.map(publicCredential), history: await this.recentHistory() };
+      return { ...settings, locked: false, authMode: protection.mode, deviceCredentialId: protection.credentialId,
+        prfSalt: protection.prfSalt, canAutomate: !!selected, username: data.username, hasAccount: !!data.username,
+        hasPassword: !!data.password, hasPasskeys: !!data.credentials.length, hasPin: !!data.pin,
+        credentials: data.credentials.map(publicCredential), history: await this.recentHistory() };
     }
     if (['UI_SAVE', 'UI_SAVE_ACCOUNT', 'UI_SAVE_SETTINGS'].includes(message.type)) {
       this.requireUI(sender, ['pages/settings.html']);
@@ -451,9 +500,32 @@ export class Controller {
     }
     if (message.type === 'UI_PIN') {
       this.requireUI(sender, ['pages/settings.html']);
-      if (data.pin && !await this.checkPin(message.oldPin, data.pin)) throw new Error("The current verification PIN is incorrect.");
-      data.pin = message.newPin ? await newPin(message.newPin) : null;
-      await this.vault.write(data);
+      if (protection.mode === 'device') throw new Error('Turn off device verification before changing the passphrase.');
+      if (data.pin && !await this.checkPin(message.oldPin, data.pin)) throw new Error('The current verification passphrase is incorrect.');
+      await newPin(message.newPin);
+      await this.vault.setPin(message.newPin);
+      await this.api.storage.local.set({ pinGuard: {} });
+      await this.invalidateAll();
+      return { saved: true };
+    }
+    if (message.type === 'UI_DEVICE_SET') {
+      this.requireUI(sender, ['pages/settings.html']);
+      if (typeof message.credentialId !== 'string' || typeof message.secret !== 'string' || typeof message.prfSalt !== 'string') {
+        throw new Error('Device verification did not complete.');
+      }
+      await this.vault.setDevice(message.credentialId, message.secret, message.prfSalt);
+      await this.invalidateAll();
+      return { saved: true };
+    }
+    if (message.type === 'UI_DEVICE_OFF') {
+      this.requireUI(sender, ['pages/settings.html']);
+      if (protection.mode !== 'device' || !await this.vault.unlockDevice(message.secret, message.credentialId)) {
+        throw new Error('Device verification did not complete.');
+      }
+      if (!message.passphrase) throw new Error('Enter your verification passphrase.');
+      if (data.pin && !await this.checkPin(message.passphrase, data.pin)) throw new Error('Incorrect verification passphrase. Try again.');
+      await newPin(message.passphrase);
+      await this.vault.switchToPin(message.passphrase);
       await this.invalidateAll();
       return { saved: true };
     }
@@ -465,39 +537,31 @@ export class Controller {
       await this.invalidateAll();
       return { deleted: true };
     }
-    if (message.type === 'UI_CLEAR') {
-      this.requireUI(sender, ['pages/settings.html']);
-      await this.vault.write(emptyVault());
-      await this.invalidateAll();
-      await this.api.storage.local.set({ settings: defaults(), history: [], suggestedDuoOrigin: '', pinGuard: {}, [LANGUAGE_KEY]: null });
-      await this.syncScripts();
-      return { deleted: true };
-    }
-    if (message.type === 'UI_RETRY') {
-      const tab = await this.api.tabs.get(message.tabId);
-      const shortcut = this.isShortcutUrl(tab.url);
-      if (!shortcut && !isOktaLoginUrl(tab.url) && !entryForUrl(tab.url)) throw new Error("Open the assistant from your UChicago sign-in tab.");
-      await this.invalidateTab(tab.id);
-      if (shortcut) await this.api.tabs.reload(tab.id);
-      else await this.api.tabs.sendMessage(tab.id, { type: 'RECHECK' });
-      return { started: true };
-    }
-    if (message.type === 'UI_TOGGLE') {
-      await this.api.storage.local.set({ settings: { ...settings, enabled: message.enabled === true } });
-      await this.invalidateAll();
-      await this.syncScripts();
-      return { saved: true };
-    }
     throw new Error("Unrecognized extension action.");
   }
   async checkPin(value, record) {
     const { pinGuard = {} } = await this.api.storage.local.get('pinGuard');
-    if (pinGuard.until > this.now()) throw new Error("Too many incorrect PIN attempts. Try again in 5 minutes.");
-    const correct = await verifyPin(value, record);
+    if (pinGuard.until > this.now()) throw new Error("Too many incorrect passphrase attempts. Try again in 5 minutes.");
+    const protection = await this.vault.protection();
+    const correct = record ? await verifyPin(value, record) : protection.mode === 'pin' ? await this.vault.unlockPin(value) :
+      await verifyPin(value, (await this.vault.read()).pin);
     if (correct) { await this.api.storage.local.set({ pinGuard: {} }); return true; }
-    const count = (pinGuard.until ? 0 : pinGuard.count || 0) + 1;
-    await this.api.storage.local.set({ pinGuard: count >= 5 ? { count: 0, until: this.now() + 300_000 } : { count } });
+    const count = (pinGuard.count || 0) + 1;
+    if (count >= 15) {
+      await this.wipeAll();
+      throw new Error('Local data was deleted after 15 incorrect verification passphrases.');
+    }
+    await this.api.storage.local.set({ pinGuard: count % 5 === 0 ? { count, until: this.now() + 300_000 } : { count } });
     return false;
+  }
+  async wipeAll() {
+    await this.invalidateAll();
+    await this.vault.clear();
+    await this.api.storage.local.clear();
+    await this.api.storage.session.clear();
+    this.state = emptyState();
+    this.wiped = true;
+    await this.api.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [SHORTCUT_RULE_ID] });
   }
   duoMenu(flow, settings, open) {
     if (!automatesDuo(flow, settings) || !['start', 'menu', 'returning'].includes(flow.duo?.phase)) return { click: false };
@@ -743,8 +807,9 @@ export class Controller {
     const prompt = this.state.prompts[id];
     if (!prompt || prompt.deadline <= this.now()) throw new Error("This confirmation has expired. Return to the sign-in page and try again.");
     if (!!prompt.inline !== inline || (inline && (prompt.tabId !== sender.tab.id || prompt.documentId !== sender.documentId))) throw new Error("This confirmation window does not match the request.");
-    const data = await this.vault.read();
-    if (message.type === 'PROMPT_GET') return { ...prompt, hasPin: !!data.pin };
+    const protection = await this.vault.protection();
+    if (message.type === 'PROMPT_GET') return { ...prompt, hasPin: protection.hasPin,
+      authMode: protection.mode, deviceCredentialId: protection.credentialId, prfSalt: protection.prfSalt };
     if (message.type !== 'PROMPT_DECIDE' || !['approve', 'cancel', 'fallback', 'enroll'].includes(message.action)) throw new Error("Unrecognized confirmation action.");
     if (message.action === 'fallback' && ['repair', 'setup'].includes(prompt.kind)) throw new Error("Unrecognized confirmation action.");
     if (['cancel', 'fallback'].includes(message.action)) {
@@ -762,6 +827,20 @@ export class Controller {
       delete this.state.prompts[id];
       return { done: true };
     }
+    let uv = false;
+    const authenticationRequired = ['login', 'setup'].includes(prompt.kind) || prompt.requireUV;
+    if (authenticationRequired && ['pin', 'pin-legacy'].includes(protection.mode)) {
+      if (!message.pin) throw new Error('Enter your verification passphrase.');
+      uv = await this.checkPin(message.pin);
+      if (!uv) throw new Error('Incorrect verification passphrase. Try again.');
+      if (protection.mode === 'pin-legacy') await this.vault.setPin(message.pin);
+    } else if (authenticationRequired && protection.mode === 'device') {
+      if (!await this.vault.unlockDevice(message.deviceSecret, message.deviceCredentialId)) {
+        throw new Error('Device verification did not complete.');
+      }
+      uv = true;
+    }
+    const data = await this.vault.read();
     if (prompt.kind === 'setup') {
       if (message.action !== 'approve' || !settings.enabled || prompt.username !== data.username || !data.password) {
         throw new Error("Your saved account or settings changed. Start passkey setup again.");
@@ -800,15 +879,17 @@ export class Controller {
       await this.note("Starting passkey setup. Existing local keys have not been deleted.").catch(() => {});
       return { done: true };
     }
-    let uv = false;
-    if (message.pin) {
+    if (message.pin && !uv) {
       uv = await this.checkPin(message.pin, data.pin);
-      if (!uv) throw new Error("Incorrect verification PIN. Try again.");
+      if (!uv) throw new Error('Incorrect verification passphrase. Try again.');
     }
-    if (prompt.requireUV && !uv) throw new Error(data.pin ? "Enter your verification PIN." : "Identity verification is required. Use another passkey provider, or set a verification PIN in settings.");
+    if (prompt.requireUV && !uv) throw new Error(data.pin ? 'Enter your verification passphrase.' : 'Identity verification is required. Use another passkey provider or set a verification passphrase in settings.');
     if (prompt.kind === 'login') {
       const flow = this.state.flows[prompt.tabId];
       if (flow?.id !== prompt.flowId || flow.status !== 'asking') throw new Error("This sign-in request has expired.");
+      const selected = await this.selectAccountCredential(data, settings);
+      flow.duo.phase = flow.duo.setup || selected ? 'start' : 'manual';
+      flow.duo.mode = flow.duo.setup || !selected ? 'enroll' : 'login';
       flow.status = 'active';
       flow.expiresAt = this.now() + FLOW_MS;
       flow.grant = null;

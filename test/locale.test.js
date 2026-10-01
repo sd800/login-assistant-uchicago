@@ -344,13 +344,13 @@ test('live localization updates labels and statuses without disturbing drafts or
   first.bind(settings.elements.date, () => first.date(Date.UTC(2026, 7, 28, 20, 5), 'Asia/Shanghai'));
   first.bind(settings.elements.count, () => first.passkeyCount(2));
   second.text(confirmation.elements.title, CONFIRM_TEXT);
-  second.text(confirmation.elements.error, 'Enter your verification PIN.');
+  second.text(confirmation.elements.error, 'Enter your verification passphrase.');
   first.text(settings.elements.history, 'Sign-in approved.');
   await first.setLocale('zh-CN');
   assert.equal(settings.documentElement.lang, 'zh-CN');
   assert.equal(confirmation.documentElement.lang, 'zh-CN');
   assert.equal(confirmation.elements.title.textContent, chinese[CONFIRM_TEXT]);
-  assert.equal(confirmation.elements.error.textContent, chinese['Enter your verification PIN.']);
+  assert.equal(confirmation.elements.error.textContent, chinese['Enter your verification passphrase.']);
   assert.equal(settings.elements.history.textContent, chinese['Sign-in approved.']);
   assert.equal(settings.elements.password.placeholder, chinese['Saved — leave blank to keep']);
   assert.match(settings.elements.date.textContent, /04:05/);
@@ -364,7 +364,7 @@ test('live localization updates labels and statuses without disturbing drafts or
   assert.equal(confirmation.elements.title.textContent, CONFIRM_TEXT);
   assert.equal(confirmation.elements.approve.textContent, 'Confirm');
   assert.equal(confirmation.elements.cancel.textContent, 'Cancel');
-  assert.equal(confirmation.elements.error.textContent, 'Enter your verification PIN.');
+  assert.equal(confirmation.elements.error.textContent, 'Enter your verification passphrase.');
   first.dispose(); second.dispose();
 });
 
@@ -381,7 +381,7 @@ test('settings labels and privacy help are localized and the popup stays compact
   assert.equal(translate("Account and password saved", 'zh-CN'), "\u8d26\u53f7\u5bc6\u7801\u5df2\u4fdd\u5b58");
   assert.equal(translate("Passkey saved", 'zh-CN'), "\u901a\u884c\u5bc6\u94a5\u5df2\u4fdd\u5b58");
   assert.match(settings, /id="clear"[^>]*>Delete local data<\/button>/);
-  assert.match(settings, /Uninstalling the extension deletes all data it has saved\./);
+  assert.match(settings, /Click Delete local data below to remove all data saved by this extension\. Uninstalling the extension also removes its saved data\./);
   assert.match(settings, /<details class="disclosure" id="privacy-notice">/);
   assert.equal(translate("Privacy", "zh-CN"), "\u9690\u79c1\u8bf4\u660e");
   assert.equal(translate('Confirm to log in to uchicago.edu.', 'zh-CN'), '\u786e\u8ba4\u4ee5\u767b\u5f55 uchicago.edu');
@@ -395,12 +395,9 @@ test('settings labels and privacy help are localized and the popup stays compact
     '\u60a8\u5df2\u4fdd\u5b58\u7684\u901a\u884c\u5bc6\u94a5\u5747\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u4ec5\u7528\u4e8e\u60a8\u6bcf\u6b21\u660e\u786e\u6388\u6743\u7684\u767b\u5f55\u3002');
   assert.equal(translate('The extension runs entirely on your device. Your account details and passkeys are securely stored locally using industry-standard encryption.', 'zh-CN'),
     '\u672c\u63d2\u4ef6\u5b8c\u5168\u5728\u672c\u5730\u8fd0\u884c\u3002\u8d26\u53f7\u4fe1\u606f\u548c\u901a\u884c\u5bc6\u94a5\u5747\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\u3002');
-  assert.equal(translate('Optional. Enter this PIN when Duo asks you to verify your identity.', 'zh-CN'),
-    '\u53ef\u6309\u9700\u8bbe\u7f6e\u3002Duo \u8981\u6c42\u9a8c\u8bc1\u8eab\u4efd\u65f6\uff0c\u8bf7\u8f93\u5165\u6b64 PIN\u3002');
-  assert.equal(translate('If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.', 'zh-CN'),
-    '\u5982\u679c\u60a8\u9009\u62e9\u8bbe\u7f6e\u9a8c\u8bc1 PIN\uff0c\u5b83\u5c06\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u5e76\u4e14\u4ec5\u7528\u4e8e\u767b\u5f55\u9a8c\u8bc1\u3002');
-  assert.equal(translate('Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.', 'zh-CN'),
-    '\u9a8c\u8bc1 PIN \u5df2\u4f7f\u7528\u7b26\u5408\u884c\u4e1a\u6807\u51c6\u7684\u52a0\u5bc6\u65b9\u5f0f\u5b89\u5168\u4fdd\u5b58\u5728\u672c\u8bbe\u5907\u4e0a\uff0c\u5e76\u4e14\u4ec5\u7528\u4e8e\u767b\u5f55\u9a8c\u8bc1\u3002');
+  assert.equal(translate('Verification passphrase', 'zh-CN'), '\u9a8c\u8bc1\u53e3\u4ee4');
+  assert.equal(translate('Enter your verification passphrase.', 'zh-CN'), '\u8bf7\u8f93\u5165\u9a8c\u8bc1\u53e3\u4ee4\u3002');
+  assert.equal(translate('To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.', 'zh-CN'), '\u4e3a\u4fdd\u62a4\u60a8\u7684\u6570\u636e\u5b89\u5168\uff0c\u8fde\u7eed 15 \u6b21\u8f93\u9519\u9a8c\u8bc1\u53e3\u4ee4\u540e\uff0c\u63d2\u4ef6\u4f1a\u6e05\u9664\u672c\u5730\u4fdd\u5b58\u7684\u5168\u90e8\u6570\u636e\u3002');
   for (const message of ['Save', 'Duo & passkeys', 'Manual verification', 'Automatic verification',
     'Without a usable passkey for this account, complete Duo verification yourself.',
     "After you confirm sign-in, the assistant uses this account's saved passkey to verify with Duo automatically.",

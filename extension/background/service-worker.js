@@ -2,7 +2,7 @@ import { Controller } from '../core/controller.js';
 import { Vault, indexedRepository } from '../core/vault.js';
 import { createLanguagePreference, translate } from '../core/locale.js';
 
-const controller = new Controller(chrome, new Vault(indexedRepository()));
+const controller = new Controller(chrome, new Vault(indexedRepository(), chrome.storage.session));
 const ready = Promise.all([
   chrome.storage.local.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' }),
   chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' })

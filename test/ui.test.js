@@ -153,7 +153,9 @@ test('Settings describes password, passkey, and PIN encryption from their saved 
   await saved.nodes['pin-settings'].emit('toggle');
   assert.equal(saved.nodes['pin-storage-help'].hidden, false);
   assert.equal(saved.nodes['pin-storage-help-text'].textContent,
-    'If you choose to set up a verification PIN, it will be securely saved on this device using industry-standard encryption and will only be used for sign-in verification.');
+    'Set a verification passphrase to protect the local encryption key and authorize sign-in.');
+  assert.match(saved.html, /<summary><span data-i18n>Authorization step<\/span><\/summary>/);
+  assert.match(saved.html, /<span id="pin-storage-help-text"><\/span>\s*<\/p>\s*<p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts\.<\/p>/);
   assert.ok(saved.html.indexOf('class="credential-lock secure-help-lock" aria-hidden="true"') < saved.html.indexOf('id="password-help-text"'));
 
   saved.nodes.username.value = 'another-account';
@@ -184,7 +186,7 @@ test('saving a PIN does not overwrite the account draft', async () => {
   await p.nodes['pin-form'].emit('submit');
   assert.ok((await p.f.vault.read()).pin);
   assert.equal(p.nodes['pin-storage-help-text'].textContent,
-    'Your verification PIN has been securely saved on this device using industry-standard encryption and will only be used for sign-in verification.');
+    'Your verification passphrase protects the local encryption key and is used for sign-in verification.');
   assert.equal(p.nodes.password.value, 'draft-password');
   assert.equal(p.nodes['new-pin'].value, '');
 });
@@ -284,13 +286,13 @@ test('local account deletion requires confirmation and clearly describes the com
   assert.equal(p.calls.filter(c => c.type === 'UI_CLEAR').length, 0);
   assert.equal((await f.vault.read()).credentials.length, 1);
   assert.match(p.state.confirmationRequests[0], /^Delete local data\?/);
-  assert.match(p.state.confirmationRequests[0], /account, password, passkeys, and PIN/);
+  assert.match(p.state.confirmationRequests[0], /account, password, passkeys, and verification passphrase/);
   assert.match(p.state.confirmationRequests[0], /Settings, language, and activity will also be reset/);
   p.state.confirmResult = true;
   await p.nodes.clear.emit('click');
   assert.deepEqual(await f.vault.read(), emptyVault());
-  assert.equal(f.api.storage.local.data.uiLanguage, null);
-  assert.deepEqual(f.api.storage.local.data.history, []);
+  assert.equal(f.api.storage.local.data.uiLanguage, undefined);
+  assert.equal(f.api.storage.local.data.history, undefined);
   assert.equal(p.nodes['clear-status'].textContent, 'Local data deleted.');
   const reopened = await page('popup', f);
   assert.equal(reopened.nodes['account-saved'].hidden, true);

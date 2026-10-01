@@ -14,13 +14,13 @@ This Chrome extension streamlines the UChicago account sign-in flow with user ap
 - Provides English and Simplified Chinese interfaces, with automatic light and dark mode support.
 - Is fully open-source, with the complete source code and technical implementation publicly available on GitHub for transparency.
 
-Current version: 1.7.3
+Current version: 1.8.1
 
-Release date: September 25, 2026
+Release date: October 1, 2026
 
 ## Installation
 
-Requires desktop Google Chrome 120 or later. No server, build step, or dependency installation is needed to use the extension.
+Requires desktop Google Chrome 122 or later. No server, build step, or dependency installation is needed to use the extension.
 
 1. Download or clone this repository, or extract a project ZIP, into a permanent folder.
 2. Open `chrome://extensions` and enable **Developer mode**.
@@ -60,7 +60,7 @@ After Duo verification, the assistant selects **Yes, this is my device** if Duo 
 | --- | --- |
 | Power icon | Enable or pause the assistant |
 | Circular arrow | Ask again on the current supported page after a canceled or stopped attempt |
-| Settings icon | Manage the account, passkeys, PIN, language, and local data |
+| Settings icon | Manage the account, passkeys, authorization step, language, and local data |
 
 A card icon appears when an account and password are saved. A key icon appears when a local passkey exists; it does not indicate that Duo has accepted its registration.
 
@@ -68,7 +68,9 @@ Choose the interface language at the top of **Settings**. Changes apply immediat
 
 Choose **Save** to save your account details. If the saved account has no usable passkey, the assistant asks whether you want to add one for one-click sign-in. **Duo & passkeys** shows the current verification mode with a status icon. A usable passkey for the saved account keeps **Automatic verification** on; without one, Duo verification is manual. There is no mode switch. **Add a passkey** and its explanation are hidden while a usable key exists, and return when the last usable key is deleted or marked invalid. Duo may remember this browser and skip verification; when it asks again depends on Duo's policies.
 
-Saved passkeys appear with a lock icon, their account, added date, and a delete control. A key explicitly rejected by Duo is marked **Invalid** and excluded from automatic use. The assistant offers to add a replacement. Canceling releases the current Duo verification for manual completion; the next sign-in goes directly to device management and asks again only when Duo is ready to create the replacement. Timeouts, cancellations, and unmatched requests do not establish that a key is invalid. Local keys are never deleted automatically, including when you register a replacement.
+In **Authorization step**, set a **Verification passphrase** or enable **Device verification**. Device verification uses Chrome's system prompt, such as Touch ID or Windows Hello. Chrome chooses the available device sign-in method. Device verification activates only when the device supports deriving an encryption key from its credential.
+
+Saved passkeys appear with a lock icon, their account, added date, and a delete control. A key explicitly rejected by Duo is marked **Invalid** and excluded from automatic use. The assistant offers to add a replacement. Canceling releases the current Duo verification for manual completion; the next sign-in goes directly to device management and asks again only when Duo is ready to create the replacement. Timeouts, cancellations, and unmatched requests do not establish that a key is invalid. Invalid keys and keys replaced in Duo stay in the local vault until you delete them or clear local data.
 
 ## Duo passkeys
 
@@ -80,23 +82,23 @@ The extension includes a software passkey provider. It creates new credentials l
 2. The assistant opens Duo's options menu and chooses **Manage devices**. Complete Duo's identity check if asked. A short message guides you to choose an existing method and finish verification; the assistant then continues automatically.
 3. In device management, the assistant chooses **Add a device → Security key → Continue**. In the extension's **Add a passkey** window, choose **Continue**.
 4. Once the new security key appears in Duo's device list, the assistant chooses **Back to login**, opens the options menu, and selects **Security Key**. A key appearing in the extension alone does not establish that Duo accepted its registration.
-5. **Automatic verification** turns on once setup is complete and stays on while a usable passkey is saved. The Add a passkey button and its explanation disappear from Settings. A verification PIN is still needed if Duo requires it.
+5. **Automatic verification** turns on once setup is complete and stays on while a usable passkey is saved. The Add a passkey button and its explanation disappear from Settings. Complete the authorization step when prompted.
 
 No Duo address needs to be entered or saved. Chrome must allow the extension to access Duo pages. Standalone Duo tabs and requests outside the approved flow use Chrome's normal passkey provider.
 
 If a request is incompatible, choose **Use another passkey provider** when offered, or continue with your existing Duo method. Hardware attestation, platform-only authenticator requests, and some WebAuthn features are not supported. Duo's policies determine which credentials it accepts.
 
-### Confirmation and verification PIN
+### Confirmation and authorization step
 
-Your initial confirmation covers the current sign-in in that tab for up to five minutes. With a usable saved passkey, the assistant chooses a usable passkey for your saved account without another passkey confirmation. Redirects do not restart the timer. A missing or invalid key, an unsupported request, or a required verification PIN may need your attention. A new sign-in needs a new confirmation.
+Your initial confirmation covers the current sign-in in that tab for up to five minutes. Complete the selected authorization step after confirming. With a usable saved passkey, the assistant chooses it without another passkey confirmation. Redirects do not restart the timer. A missing or invalid key, an unsupported request, or a separate Duo identity check may need your attention. A new sign-in needs a new confirmation.
 
-When Duo requires identity verification, the extension checks the **Verification PIN** entered for that attempt, or lets you use another provider. You can set this optional PIN in settings using 6–128 characters. It is separate from your school password and device PIN. Five incorrect attempts pause PIN checks for five minutes.
+The **Verification passphrase** accepts 6–128 characters and differs from your school password and device PIN. Five consecutive incorrect entries pause passphrase checks for five minutes. After 15 consecutive incorrect entries, the extension deletes its saved local data. A successful entry resets the count. Canceling a device verification prompt does not count as an incorrect passphrase.
 
 Keep another Duo verification method.
 
 ## Privacy and security
 
-Your account information, passkey private keys, and PIN verification record are protected in the extension's local IndexedDB with industry-standard AES-GCM encryption. Encryption and decryption take place on your device, and saved account details and passkeys are used only for sign-ins you explicitly authorize.
+Your account information and passkey private keys are encrypted in the extension's local IndexedDB with AES-256-GCM. The authorization step protects the vault's encryption key: the verification passphrase derives a wrapping key with PBKDF2-SHA-256, while supported device verification derives one with WebAuthn PRF. The extension keeps the unlocked key in Chrome's in-memory extension session while the browser is open. A device that lacks PRF support is not enabled for device verification.
 
 - No developer server receives your data. The extension includes no analytics, advertising, cloud sync, cookie collection, or access to Chrome's password database.
 - Account credentials are filled only on recognized UChicago Okta sign-in pages after approval. Passkey responses are restricted to Duo pages admitted into that flow; private keys remain local.
@@ -124,7 +126,7 @@ Manage these host permissions through Chrome's **Site access** controls. Access 
 
 ### Deleting data
 
-**Settings → Local data → Delete local data** removes saved account credentials, local passkeys, and the PIN, and resets settings, language, and activity. Uninstalling the extension or deleting its Chrome profile also removes local credentials.
+**Settings → Local data → Delete local data** removes saved account credentials, local passkeys, and the verification passphrase, and resets settings, language, and activity. Fifteen consecutive incorrect passphrases perform the same local deletion. Uninstalling the extension or deleting its Chrome profile also removes local credentials.
 
 These actions do not delete your school account, remove registrations from Duo, or delete passkeys held by other providers. Remove obsolete registrations in Duo separately, and retain another way to sign in.
 
@@ -136,7 +138,7 @@ These actions do not delete your school account, remove registrations from Duo, 
 | A canceled attempt does not prompt again | Use the circular-arrow **Retry sign-in** control in the popup. |
 | The flow stops at an entry page or Duo | Check Chrome's site access, then start and approve a new sign-in in the same tab. If the page or request is unsupported, continue manually. |
 | Chrome's normal passkey dialog appears | Expected without a usable saved key, outside an approved flow, or after choosing another provider. If a usable key is saved, reload the extension and begin a fresh school sign-in. Unmatched or unsupported requests show an extension prompt before using another provider. |
-| Another confirmation or PIN is required | Follow the request or choose another provider. Approval expires, and Duo may require fresh identity verification. |
+| Another confirmation or passphrase is required | Complete the authorization step or choose another provider. Approval expires, and Duo may require fresh identity verification. |
 
 ## Development
 

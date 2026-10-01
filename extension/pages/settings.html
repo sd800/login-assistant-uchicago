@@ -27,6 +27,20 @@
   </section>
   <div class="settings-grid">
     <div class="settings-main">
+      <section class="section" id="locked-panel" hidden>
+        <h2 data-i18n>Unlock local data</h2>
+        <p class="help" data-i18n>Complete your authorization step to view and manage saved data.</p>
+        <form id="unlock-form">
+          <div class="field" id="unlock-passphrase-field" hidden>
+            <label for="unlock-passphrase" data-i18n>Verification passphrase</label>
+            <input id="unlock-passphrase" type="password" autocomplete="off" maxlength="128">
+          </div>
+          <div class="actions"><button class="primary" type="submit" id="unlock-button" data-i18n>Unlock</button></div>
+          <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
+        </form>
+        <p class="status" id="unlock-status" role="status" aria-live="polite"></p>
+      </section>
+      <div id="settings-protected">
       <section class="section" aria-labelledby="account-heading">
         <h2 id="account-heading" data-i18n>Account</h2>
         <form id="account-form" aria-labelledby="account-heading">
@@ -64,28 +78,39 @@
         </div>
       </section>
       <details class="disclosure" id="pin-settings">
-        <summary data-i18n>Verification PIN</summary>
+        <summary><span data-i18n>Authorization step</span></summary>
         <div class="disclosure-body">
-          <p class="help" data-i18n>Optional. Enter this PIN when Duo asks you to verify your identity.</p>
+          <p class="help" data-i18n>Device verification uses Touch ID, Windows Hello, or your device's sign-in method. Otherwise, enter your verification passphrase before sign-in.</p>
+          <div id="passphrase-settings"><h3 data-i18n>Verification passphrase</h3>
           <form id="pin-form">
             <div class="field" id="old-pin-field" hidden>
-              <label for="old-pin" data-i18n>Current verification PIN</label>
+              <label for="old-pin" data-i18n>Current verification passphrase</label>
               <input id="old-pin" type="password" autocomplete="off" maxlength="128">
             </div>
             <div class="field">
-              <label for="new-pin" data-i18n>New verification PIN</label>
-              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" aria-describedby="pin-help pin-storage-help">
-              <p class="help" id="pin-help" data-i18n>6–128 characters. To remove a PIN, enter the current PIN and leave this blank.</p>
+              <label for="new-pin" data-i18n>New verification passphrase</label>
+              <input id="new-pin" type="password" autocomplete="new-password" minlength="6" maxlength="128" required aria-describedby="pin-help pin-storage-help">
+              <p class="help" id="pin-help" data-i18n>Use 6–128 characters.</p>
               <p class="help secure-help" id="pin-storage-help" hidden>
                 <span class="credential-lock secure-help-lock" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span>
                 <span id="pin-storage-help-text"></span>
               </p>
+              <p class="help" data-i18n>To help protect your data, the extension deletes all data it stores locally after 15 consecutive incorrect passphrase attempts.</p>
             </div>
-            <div class="actions"><button type="submit" data-i18n>Update PIN</button></div>
+            <div class="actions"><button type="submit" data-i18n>Save passphrase</button></div>
             <p class="status" id="pin-status" role="status" aria-live="polite"></p>
-          </form>
+          </form></div>
+          <h3 data-i18n>Device verification</h3>
+          <p class="help" data-i18n>Chrome asks your device to verify you before each sign-in. Your fingerprint or face data stays with your device.</p>
+          <div class="field" id="device-old-pin-field" hidden>
+            <label for="device-old-pin" id="device-passphrase-label" data-i18n>Verification passphrase</label>
+            <input id="device-old-pin" type="password" autocomplete="off" maxlength="128">
+          </div>
+          <div class="actions"><button type="button" id="device-toggle" data-i18n>Enable device verification</button></div>
+          <p class="status" id="device-status" role="status" aria-live="polite"></p>
         </div>
       </details>
+      </div>
     </div>
     <aside class="settings-help" aria-labelledby="help-heading">
       <section class="help-section" id="setup-help">
@@ -93,6 +118,7 @@
         <h3 data-i18n>Getting started</h3>
         <ol>
           <li data-i18n>Enter your CNetID or UCMEDID and password, then choose Save in Account.</li>
+          <li data-i18n>In Authorization step, set a verification passphrase or enable device verification.</li>
           <li data-i18n>When asked, confirm that you want to add a passkey for one-click sign-in. You can also start from Add a passkey under Duo &amp; passkeys.</li>
           <li data-i18n>The assistant opens the school sign-in and takes you to Duo device management. If Duo asks you to verify your identity, choose an existing method and complete verification.</li>
           <li data-i18n>Choose Continue in the Add a passkey window. Once Duo finishes registration, automatic verification is enabled.</li>
@@ -113,20 +139,20 @@
         <div class="disclosure-body">
           <dl class="privacy-notice">
             <dt data-i18n>Protected on your device</dt>
-            <dd data-i18n>Your account details, passkey private keys, and PIN verification record are protected with AES-GCM encryption in this Chrome profile. Settings and recent activity also stay on your device. Activity keeps up to 20 entries from the past 24 hours and never includes passwords, private keys, or full sign-in URLs.</dd>
+            <dd data-i18n>Your account details, passkey private keys, and passphrase verification record are protected with AES-GCM encryption in this Chrome profile. Settings and recent activity also stay on your device. Activity keeps up to 20 entries from the past 24 hours and never includes passwords, private keys, or full sign-in URLs.</dd>
             <dt data-i18n>During sign-in</dt>
-            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. Page-address checks keep passkey responses within the sign-in you authorized, while private keys and the verification PIN stay on your device.</dd>
+            <dd data-i18n>After you confirm, the extension fills your account details on the UChicago Okta sign-in page and handles supported Duo steps. Page-address checks keep passkey responses within the sign-in you authorized, while private keys and the verification passphrase stay on your device.</dd>
             <dt data-i18n>No tracking</dt>
             <dd data-i18n>The extension has no ads, analytics, cloud sync, or developer servers receiving your data, and it never reads the Chrome password manager.</dd>
             <dt data-i18n>Deleting data</dt>
-            <dd data-i18n>Delete local data removes the saved account, password, passkeys, and PIN, and resets settings, language, and activity. Uninstalling removes all data saved by this extension. Neither action deletes your school account or Duo registrations.</dd>
+            <dd data-i18n>Delete local data removes the saved account, password, passkeys, and verification passphrase, and resets settings, language, and activity. Uninstalling removes all data saved by this extension. Neither action deletes your school account or Duo registrations.</dd>
           </dl>
         </div>
       </details>
       <details class="disclosure">
         <summary data-i18n>Local data</summary>
         <div class="disclosure-body">
-          <p class="help" data-i18n>Uninstalling the extension deletes all data it has saved.</p>
+          <p class="help" data-i18n>Click Delete local data below to remove all data saved by this extension. Uninstalling the extension also removes its saved data.</p>
           <div class="actions"><button class="danger" type="button" id="clear" data-i18n>Delete local data</button></div>
           <p class="status" id="clear-status" role="status" aria-live="polite"></p>
         </div>
@@ -135,7 +161,7 @@
   </div>
   <footer class="footer">
     <p data-i18n>Independent project. Not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.</p>
-    <p class="version" data-i18n>Version 1.7.3</p>
+    <p class="version" data-i18n>Version 1.8.1</p>
     <p lang="en-US" translate="no">© 2026 Songming.org</p>
   </footer>
 </main>

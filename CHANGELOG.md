@@ -4,6 +4,22 @@
 
 Changes by release, newest first.
 
+## 1.8.1 - 2026-10-01
+
+### Added
+
+- Added an Authorization step with a verification passphrase and supported device verification through Chrome.
+- The selected authorization method now protects the local vault encryption key. Existing saved data migrates when that method is set up.
+- Fifteen consecutive incorrect passphrases clear the extension's saved local data. Five and ten errors each pause further attempts for five minutes.
+
+### Changed
+
+- Clarified the authorization and local data guidance in Settings.
+
+### Verification
+
+- Static checks and the complete test suite pass.
+
 ## 1.7.3 - 2026-09-25
 
 ### Changed

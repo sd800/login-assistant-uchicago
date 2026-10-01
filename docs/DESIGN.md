@@ -58,7 +58,8 @@ The lifetime limits are defined in [policy.js](../extension/core/policy.js):
 | Approved sign-in | Five minutes from initial confirmation |
 | Entry handoff or redirect observation | Up to one minute, within the sign-in lifetime |
 | Passkey approval | Current account and tab, within the original sign-in deadline |
-| PIN lockout | Five minutes after five incorrect attempts |
+| Passphrase lockout | Five minutes after each five consecutive incorrect entries |
+| Local data deletion | After fifteen consecutive incorrect passphrases |
 
 A grant identifies the tab, flow, account, and approved credential/RP pairs. The initial confirmation covers those keys during this sign-in, including slow redirects and fresh challenges, without a second passkey choice. Challenge fingerprints and job start state are persisted before cryptography so a restarted worker cannot sign the same challenge again. Automatic assertions are bounded to twelve requests per flow. Redirects never renew approval. Registration still requires its own confirmation and can authorize the new key for the remaining flow. After the guided setup observes the new device in Duo, it selects that key and enables automatic verification. Failed or canceled guided setup does not make an unfinished key available for automatic verification. A key rejected by Duo is retained and marked invalid. Canceling the replacement prompt releases the current Duo request for manual verification; the next approved sign-in enters guided device management directly and keeps the registration confirmation at the actual credential-creation request.
 
@@ -84,7 +85,7 @@ The provider creates local ES256/P-256 credentials. Registration responses use C
 
 The relying-party ID must match the requesting Duo host or one of its parent domains within `duosecurity.com`, and the selected credential must match that ID and the request. The worker rechecks origin, document, permission, and flow before returning a response.
 
-User presence and user verification are distinct [WebAuthn concepts](https://www.w3.org/TR/webauthn-3/). Confirmation supplies presence; the verification flag is set only after the PIN entered for that approval passes verification. A click alone does not supply identity verification.
+User presence and user verification are distinct [WebAuthn concepts](https://www.w3.org/TR/webauthn-3/). Confirmation supplies presence; the verification flag is set after the verification passphrase or system device verification succeeds. A click alone does not supply identity verification.
 
 Conditional and silent requests also pass through the adapter before any native call. In automatic mode they can be held while switching a default method; otherwise an unsupported selected method waits for an explicit provider choice. The provider supports `credProps` and Duo same-site legacy `appid`/`appidExclude` hints. Assertions still use the WebAuthn relying-party hash and return `appid: false`; no legacy U2F credential is imported. Platform-only authenticators, enterprise attestation, and other WebAuthn extensions are unsupported. During automatic verification, an incompatible request opens an extension prompt; only an explicit provider choice invokes native fallback. Identity checks without a matching local key remain manual. The extension does not provide hardware attestation.
 
@@ -100,21 +101,21 @@ Invalid keys remain in the vault, appear with an Invalid label in Settings, and 
 
 | Storage | Contents |
 | --- | --- |
-| Extension IndexedDB | An encrypted vault containing the account, passkey private keys, and PIN verification record; the vault's nonexportable AES key |
-| `chrome.storage.local` | Enabled state, derived automatic-verification state, account-matched passkey ID, language preference, PIN attempt limits, and recent activity |
-| `chrome.storage.session` | Flows, confirmation requests, passkey jobs, and temporary grants |
+| Extension IndexedDB | An encrypted vault containing the account, passkey private keys, and passphrase verification record; a wrapped vault key and its verification metadata |
+| `chrome.storage.local` | Enabled state, derived automatic-verification state, account-matched passkey ID, language preference, passphrase attempt count, and recent activity |
+| `chrome.storage.session` | Flows, confirmation requests, passkey jobs, temporary grants, and the vault key while unlocked |
 
-The vault uses AES-256-GCM with a fresh nonce for each write. PIN checks use a salted PBKDF2-SHA-256 record. Local and session storage access is restricted to trusted extension contexts using Chrome's [storage access controls](https://developer.chrome.com/docs/extensions/reference/api/storage).
+The vault uses AES-256-GCM with a fresh nonce for each write. A random vault key is wrapped by a key derived from the verification passphrase with salted PBKDF2-SHA-256, or from a platform credential through WebAuthn PRF. Only the active method has a persisted key wrapper. Device mode refuses enrollment when the platform does not return PRF output. Local and session storage access is restricted to trusted extension contexts using Chrome's [storage access controls](https://developer.chrome.com/docs/extensions/reference/api/storage).
 
-The vault key is a nonexportable CryptoKey held in extension-owned IndexedDB and used locally by the extension. Encryption and decryption happen on the device, keeping account credentials, passkey private keys, and the PIN verification record protected at rest. The verification PIN provides local user verification for supported WebAuthn requests that require it. The extension has no cloud backup or synchronization.
+The data, wrappers, and migration from the previous nonexportable-key format remain in extension-owned IndexedDB. The unlocked key is retained only in the extension's trusted in-memory Chrome session; each sign-in still requires confirmation and the active authorization step. Five consecutive wrong passphrases start a five-minute pause, with the count preserved across pauses and worker restarts. A correct passphrase resets the count. The fifteenth consecutive error clears the vault, local settings, recent activity, and session state. The extension has no cloud backup or synchronization.
 
 Activity contains at most 20 entries from the past 24 hours. Cleanup runs on startup, periodically, and when activity is read or added. Entries omit passwords, private keys, and full authentication URLs.
 
-Clearing local account data removes saved credentials and PIN information and resets settings, language, activity, and pending approvals. It does not delete the school account or registrations held by Duo. Uninstalling or losing the Chrome profile also removes access to locally saved credentials.
+Clearing local account data removes saved credentials and authorization information and resets settings, language, activity, and pending approvals. It does not delete the school account or registrations held by Duo. Uninstalling or losing the Chrome profile also removes access to locally saved credentials.
 
 ## Interface behavior
 
-Account and PIN forms save independently. The popup's power control saves immediately while preserving drafts in other sections. Duo verification is displayed as a status, without a mode switch. The Add a passkey action and its explanation are hidden while the saved account has a usable key. Settings lists passkeys with account information, creation time, invalid-state labels, and individual deletion controls. Matching excludes pending registrations and explicitly rejected keys. Without a usable key, Duo method selection and verification remain with the user; a separately requested setup flow can still add a new local passkey.
+Account and authorization forms save independently. The popup's power control saves immediately while preserving drafts in other sections. Duo verification is displayed as a status, without a mode switch. The Add a passkey action and its explanation are hidden while the saved account has a usable key. Settings lists passkeys with account information, creation time, invalid-state labels, and individual deletion controls. Matching excludes pending registrations and explicitly rejected keys. Without a usable key, Duo method selection and verification remain with the user; a separately requested setup flow can still add a new local passkey.
 
 The interface supports English and Simplified Chinese. Language changes update open extension windows without replacing form fields or altering sign-in state. Each page applies its language before revealing content, avoiding an initial flash of another language. Dates use the device's time zone. The shared stylesheet follows system appearance and provides keyboard focus states and language-appropriate spacing.
 
