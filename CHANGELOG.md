@@ -4,15 +4,17 @@
 
 Changes by release, newest first.
 
+## 1.8.7 - 2026-10-01
+
+### Changed
+
+- Updated project documentation and release notes.
+
 ## 1.8.6 - 2026-10-01
 
 ### Changed
 
 - Updated user-facing documentation and interface guidance.
-
-### Verification
-
-- Documentation and interface checks pass.
 
 ## 1.8.5 - 2026-10-01
 
@@ -20,19 +22,11 @@ Changes by release, newest first.
 
 - Updated user-facing documentation and interface guidance.
 
-### Verification
-
-- Documentation and interface checks pass.
-
 ## 1.8.3 - 2026-10-01
 
 ### Changed
 
 - Refined the privacy and security guidance in both README languages.
-
-### Verification
-
-- Static and documentation checks pass.
 
 ## 1.8.2 - 2026-10-01
 
@@ -42,10 +36,6 @@ Changes by release, newest first.
 - Saving or changing a verification passphrase requires entering it twice. A saved passphrase can now be removed without deleting the account or passkeys.
 - Device verification can be turned off from Settings, returning authorization to the passphrase.
 - Reorganized the setup and sign-in guidance in both READMEs.
-
-### Verification
-
-- Static checks and the complete test suite pass.
 
 ## 1.8.1 - 2026-10-01
 
@@ -59,19 +49,11 @@ Changes by release, newest first.
 
 - Clarified the authorization and local data guidance in Settings.
 
-### Verification
-
-- Static checks and the complete test suite pass.
-
 ## 1.7.3 - 2026-09-25
 
 ### Changed
 
 - Organized the service worker, extension pages, and shared interface files into dedicated folders.
-
-### Verification
-
-- Focused controller, interface, localization, theme, and routing tests pass with the static checks.
 
 ## 1.7.2 - 2026-09-20
 
@@ -79,19 +61,11 @@ Changes by release, newest first.
 
 - Simplified the saved passkey section in Settings by removing redundant deletion guidance.
 
-### Verification
-
-- Focused interface and localization tests pass together with the static checks.
-
 ## 1.7.1 - 2026-09-03
 
 ### Changed
 
 - After the user authorizes a sign-in, the extension can still continue to complete the login verification steps within the authorized tab, even if the user switches to another tab or window.
-
-### Verification
-
-- Focused controller, page-adapter, interface, localization, and passkey tests pass together with the static checks.
 
 ## 1.6.18 - 2026-09-01
 
@@ -99,19 +73,11 @@ Changes by release, newest first.
 
 - Improved documentation navigation across both README languages.
 
-### Verification
-
-- Static checks pass for documentation parity, version metadata, localization, and the manifest.
-
 ## 1.6.17 - 2026-09-01
 
 ### Changed
 
 - Refined privacy and data-protection guidance across the interface and documentation.
-
-### Verification
-
-- Focused interface and localization tests pass together with the static checks.
 
 ## 1.6.16 - 2026-08-29
 
@@ -120,29 +86,17 @@ Changes by release, newest first.
 - Expanded the README introduction with the recurring Okta and Duo sign-in friction behind the project and how the extension streamlines that process.
 - Simplified the Local data note to state what uninstalling the extension removes.
 
-### Verification
-
-- Static checks pass for README parity, version metadata, localization, and the manifest.
-
 ## 1.6.15 - 2026-08-29
 
 ### Changed
 
 - Updated the extension description to emphasize a simpler and faster UChicago account sign-in.
 
-### Verification
-
-- Static checks pass for the manifest, version metadata, localization, and documentation.
-
 ## 1.6.13 - 2026-08-29
 
 ### Changed
 
 - Verification PIN settings now show concise usage guidance and load the saved-state encryption note only after the section is opened.
-
-### Verification
-
-- All 62 focused Settings interface, localization, and theme tests pass.
 
 ## 1.6.12 - 2026-08-29
 
@@ -156,10 +110,6 @@ Changes by release, newest first.
 
 - Settings now explains the local encryption and explicitly authorized use of passwords and passkeys according to their saved state.
 
-### Verification
-
-- All 62 focused Settings interface, localization, and theme tests pass.
-
 ## 1.6.10 - 2026-08-29
 
 ### Added
@@ -169,10 +119,6 @@ Changes by release, newest first.
 ### Changed
 
 - Standardized second-person wording throughout the Simplified Chinese interface and documentation.
-
-### Verification
-
-- The focused confirmation and localization tests pass together with the static checks.
 
 ## 1.6.9 - 2026-08-29
 
@@ -185,10 +131,6 @@ Changes by release, newest first.
 ### Fixed
 
 - Aligned each saved passkey account name and its **Current account** label on the same text line.
-
-### Verification
-
-- All 213 focused interface, localization, controller, passkey bridge, and page-adapter tests pass.
 
 ## 1.6.8 - 2026-08-29
 
@@ -211,10 +153,6 @@ Changes by release, newest first.
 - Kept passkeys that Duo explicitly rejects, marked them **Invalid**, and added a guided replacement path without deleting local keys automatically.
 - Prevented an English interface flash when a saved language is Simplified Chinese.
 
-### Verification
-
-- All 200 focused interface, localization, controller, passkey bridge, and page-adapter tests pass, together with the static checks.
-
 ## 0.2.11 - 2026-08-28
 
 ### Changed
@@ -227,10 +165,6 @@ Changes by release, newest first.
 - Prevented English text from briefly appearing before the saved language in settings, the popup, and confirmation windows.
 - Kept the tab title neutral until localization is ready and preserved a usable page if the language preference cannot be read.
 
-### Verification
-
-- All 48 focused interface, localization, and theme tests pass, together with the selected data-reset regression. Coverage includes language defaults, saved choices, delayed reads, read failures, and concurrent changes.
-
 ## 0.2.10 - 2026-08-28
 
 ### Changed
@@ -240,10 +174,6 @@ Changes by release, newest first.
 - Adjusted the settings wordmark text size.
 - Refreshed the settings getting-started steps for school and third-party services, automatic Duo handling, and passkey registration.
 - Matched the spacing above and below the version line in the settings footer.
-
-### Verification
-
-- All 43 focused interface, localization, and theme tests pass.
 
 ## 0.2.9 - 2026-08-28
 
@@ -255,10 +185,6 @@ Changes by release, newest first.
 - Retained only the past 24 hours of activity, up to 20 entries, with automatic local deletion and live settings updates.
 - Adjusted the settings wordmark text size.
 
-### Verification
-
-- Focused flow, adapter, interface, localization, policy, and theme checks pass.
-
 ## 0.2.8 - 2026-08-28
 
 ### Changed
@@ -266,10 +192,6 @@ Changes by release, newest first.
 - Enlarged the settings header logo from 32px to 64px and increased the gap beside the wordmark to 14px.
 - Updated the bilingual README and icon notes with the current display sizes.
 - Removed the "For this tab only." line from the sign-in confirmation window and its Chinese translation.
-
-### Verification
-
-- All 9 focused theme checks and static checks pass.
 
 ## 0.2.7 - 2026-08-28
 
@@ -279,10 +201,6 @@ Changes by release, newest first.
 - Expanded the setup, permissions, privacy, keyboard controls, and development instructions in both READMEs.
 - Added lightweight README checks for section structure, tables, code literals, commands, and link destinations.
 - Added a standalone independence statement at the end of both READMEs covering affiliation, sponsorship, and endorsement.
-
-### Verification
-
-- Static and focused documentation checks pass.
 
 ## 0.2.6 - 2026-08-28
 
@@ -296,10 +214,6 @@ Changes by release, newest first.
 - Kept native Enter/Space behavior for inputs, passkey selection, other buttons, and the Details disclosure. Confirmation shortcuts ignore composition, modifier combinations, synthetic events, and held-key repeats.
 - Routed shortcuts through the existing decision flow, retaining required PIN validation, disabled states, request expiry, and protection against duplicate in-flight decisions. Esc can close unavailable or expired requests.
 
-### Verification
-
-- All 33 focused UI and localization tests pass across two suites.
-
 ## 0.2.5 - 2026-08-28
 
 ### Changed
@@ -309,10 +223,6 @@ Changes by release, newest first.
 - Removed the negative heading tracking. Tracking follows the selected language immediately and is computed using each element's own font size.
 - Marked English brand text and each native-language option explicitly so they retain the correct typography within either interface language.
 - Documented that Chrome-owned dialogs and native tooltips control their own typography and cannot be styled by the extension.
-
-### Verification
-
-- All 24 focused typography, theme, and localization tests pass.
 
 ## 0.2.4 - 2026-08-28
 
@@ -327,11 +237,6 @@ Changes by release, newest first.
 ### Added
 
 - Added a collapsed bilingual Privacy section to the Settings help column.
-
-### Verification
-
-- All 35 focused UI, localization, and theme tests pass, including an aspect-ratio regression check for the status icons.
-- Inspected isolated light/dark SVG previews of the account card at native and 4x scales; reviewed the privacy copy against the local implementation.
 
 ## 0.2.3 - 2026-08-28
 
@@ -348,10 +253,6 @@ Changes by release, newest first.
 - Added `CHANGELOG_zh.md` with the complete version history and links between the two languages.
 - Included both changelogs in release packages and added a check that their version/date sequences match.
 
-### Verification
-
-- All 116 local tests and static checks pass, including independent saved-data indicators, hidden unconfigured Duo status, and deletion confirmation/cancellation.
-
 ## 0.2.2 - 2026-08-28
 
 ### Changed
@@ -365,10 +266,6 @@ Changes by release, newest first.
 - Added this changelog to the source and release package.
 - Added a release check that requires the package version, extension version, and newest changelog entry to agree.
 
-### Verification
-
-- All 114 local tests and static checks pass, including icon order, saved power state, and localized tooltips.
-
 ## 0.2.1 - 2026-08-28
 
 ### Changed
@@ -379,10 +276,6 @@ Changes by release, newest first.
 - Standardized interactive red at `#800000` in both system appearances, with readable text, control borders, and focus indicators.
 - Added an explicit settings footer stating that the project is not affiliated with, endorsed by, or sponsored by the University of Chicago, Okta, or Duo Security.
 - Updated English and Chinese interface copy together.
-
-### Verification
-
-- Expanded the local suite to 114 passing tests, including independent saves, draft preservation, toggle persistence, and error recovery.
 
 ## 0.2.0 - 2026-08-28
 
@@ -398,10 +291,6 @@ Changes by release, newest first.
 - Carried approved entry flows through their fixed launch endpoints in the same tab without a duplicate Okta confirmation. Retained approval expiry and restrictions on credential release.
 - Simplified the bilingual settings, popup, and confirmation interfaces; removed the redundant popup storage footer.
 
-### Verification
-
-- Expanded the local suite to 98 passing tests, including entry routing, delayed forms, cancellation, and revoked site access.
-
 ## 0.1.0 - 2026-08-28
 
 ### Added
@@ -410,7 +299,3 @@ Changes by release, newest first.
 - Added a local software passkey provider for a configured Duo site, with explicit consent and verification PIN support.
 - Added default US English and selectable Simplified Chinese, with shared language preferences and automatic system light/dark appearance.
 - Added the maroon phoenix-and-key icon with transparent rounded corners and explicit Okta and Duo site permissions.
-
-### Verification
-
-- The saved release included 72 passing local tests.

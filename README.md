@@ -4,9 +4,9 @@
 
 Login Assistant for UChicago is a personal Chrome extension that makes your UChicago account sign-in simpler and faster.
 
-UChicago services use Okta and Duo across several sign-in pages. Opening my.UChicago, Canvas, and other school services can therefore involve repeated account entry, redirects, verification-method selection, and Duo authentication.
+Signing in a school account should be a simple and quick process. Meanwhile, at the University of Chicago, the process can involve several steps across Okta and Duo. Users often need to enter their username and password on separate pages, wait through multiple redirects, select a verification method, and complete Duo authentication using a fingerprint or one-time code. Because this process is repeated frequently when accessing essential services such as my.UChicago and Canvas, reducing these repetitive interactions can make everyday access more efficient.
 
-This extension brings those steps into one guided flow. You approve each sign-in, and the assistant completes the recognized account and Duo steps so you can reach the service faster.
+Login Assistant for UChicago streamlines the UChicago account sign-in flow with user approval each time. By automatically handling the repetitive steps in the process, it makes signing in faster and more convenient while leaving authentication under the user's control.
 
 - Supports my.UChicago, Canvas, and third-party applications that use UChicago account sign-in.
 - Automatically completes the UChicago account sign-in flow each time you authorize a sign-in after account and passkey setup.
