@@ -8,6 +8,8 @@ Double-click `web/index.html` to open the English website, or `web/zh.html` for 
 
 The interactive preview illustrates the assistant's sign-in flow. Confirm plays the sequence, Cancel keeps the visitor in control, and Try it again resets the preview. The download link points to GitHub's source archive; visitors load its `extension/` folder in Chrome.
 
+On HTTP and HTTPS, `/index.html`, `/index`, and `/index/` redirect to the homepage while preserving query parameters and fragments. Homepage links also use the root address. Local-file browsing keeps the original file links. The `web/index/` entry provides the directory route for static hosting.
+
 ## Publish with GitHub Pages
 
 1. Commit and push the website and `.github/workflows/pages.yml` to `main`.

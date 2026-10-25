@@ -1,6 +1,12 @@
 (() => {
   'use strict';
 
+  if (window.location.protocol === 'https:' || window.location.protocol === 'http:') {
+    for (const link of document.querySelectorAll('a[href="index.html"]')) {
+      link.setAttribute('href', './');
+    }
+  }
+
   const demo = document.querySelector('[data-demo]');
   if (demo) {
     const initial = demo.querySelector('[data-demo-initial]');

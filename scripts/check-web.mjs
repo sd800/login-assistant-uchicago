@@ -3,6 +3,7 @@ import { readFile, readdir, stat } from 'node:fs/promises';
 import { dirname, extname, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { runInNewContext } from 'node:vm';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const web = resolve(root, 'web');
@@ -20,7 +21,7 @@ async function walk(directory) {
 }
 await walk(web);
 
-for (const [name, language] of [['index.html', 'en-US'], ['zh.html', 'zh-CN']]) {
+for (const [name, language] of [['index.html', 'en-US'], ['zh.html', 'zh-CN'], ['index/index.html', 'en-US']]) {
   const path = resolve(web, name);
   const source = await readFile(path, 'utf8');
   assert.ok(source.startsWith('<!doctype html>'), `Missing doctype: ${name}`);
@@ -67,6 +68,26 @@ assert.deepEqual([...english.ids], [...chinese.ids], 'Both languages must keep e
 const controls = source => [...source.matchAll(/data-(demo(?:-[\w-]+)?|copy(?:-[\w-]+)?)(?:="[^"]*")?/g)].map(match => match[1]);
 assert.deepEqual(controls(english.source), controls(chinese.source), 'Both languages must expose the same interactions.');
 
+const canonical = await readFile(resolve(web, 'assets/canonical.js'), 'utf8');
+for (const [url, script, expected] of [
+  ['https://example.test/index.html', 'https://example.test/assets/canonical.js', 'https://example.test/'],
+  ['https://example.test/index?source=link#privacy', 'https://example.test/assets/canonical.js', 'https://example.test/?source=link#privacy'],
+  ['https://example.test/index/', 'https://example.test/assets/canonical.js', 'https://example.test/'],
+  ['http://localhost:8080/index.html?x=1#main', 'http://localhost:8080/assets/canonical.js', 'http://localhost:8080/?x=1#main'],
+  ['https://example.test/project/index.html', 'https://example.test/project/assets/canonical.js', 'https://example.test/project/'],
+  ['https://example.test/project/index?x=1#main', 'https://example.test/project/assets/canonical.js', 'https://example.test/project/?x=1#main'],
+  ['https://example.test/', 'https://example.test/assets/canonical.js', null],
+  ['https://example.test/zh.html', 'https://example.test/assets/canonical.js', null],
+  ['https://example.test/other/index', 'https://example.test/assets/canonical.js', null],
+  ['file:///local/web/index.html', 'file:///local/web/assets/canonical.js', null]
+]) {
+  const location = new URL(url);
+  let target = null;
+  location.replace = value => { target = value; };
+  runInNewContext(canonical, { URL, window: { location }, document: { currentScript: { src: script } } });
+  assert.equal(target, expected, `Unexpected homepage redirect: ${url}`);
+}
+
 for (const file of files.filter(path => extname(path) === '.js')) {
   execFileSync(process.execPath, ['--check', file], { stdio: 'pipe' });
   const source = await readFile(file, 'utf8');
@@ -86,4 +107,4 @@ assert.match(workflow, /node scripts\/check-web\.mjs/, 'Validate the site before
 assert.match(workflow, /pages:\s*write/);
 assert.match(workflow, /id-token:\s*write/);
 assert.match(workflow, /github\.event_name != 'pull_request'/, 'Pull requests must run checks without deploying.');
-console.log(`Website checks passed: ${documents.size} languages, ${files.length} files, local resources, links, interactions, and Pages workflow (${relative(root, web)}/).`);
+console.log(`Website checks passed: 2 languages, ${documents.size} pages, ${files.length} files, local resources, links, redirects, interactions, and Pages workflow (${relative(root, web)}/).`);
