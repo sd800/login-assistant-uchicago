@@ -9,6 +9,7 @@
   "scripts": {
     "test": "node scripts/test.mjs",
     "check": "node scripts/check.mjs",
+    "check:web": "node scripts/check-web.mjs",
     "package": "node scripts/package.mjs",
     "test:all": "node scripts/test.mjs --all"
   }

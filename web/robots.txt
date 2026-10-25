@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://uchi-login.songming.org/sitemap.xml
