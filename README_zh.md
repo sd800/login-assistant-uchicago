@@ -151,6 +151,12 @@ npm run package                # 静态检查与打包
 
 更多资料：[架构设计](docs/DESIGN.md) · [测试指南](docs/QA.md) · [图标源文件](docs/ICON.md) · [更新日志](CHANGELOG_zh.md)
 
+## 许可协议
+
+本项目以 [MIT 许可协议](LICENSE)发布。
+
+Copyright (c) 2026 Songming.org
+
 ## 独立项目声明
 
 本插件为独立项目，与芝加哥大学、Okta、Duo Security 及其他任何机构均无隶属关系，也未获得这些机构的赞助或背书。

@@ -151,6 +151,12 @@ The loadable extension is in `extension/`, synthetic tests are in `test/`, and c
 
 Further reading: [Architecture](docs/DESIGN.md) · [Testing guide](docs/QA.md) · [Icon artwork](docs/ICON.md) · [Changelog](CHANGELOG.md)
 
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Songming.org
+
 ## Independence statement
 
 This extension is an independent project. It is not affiliated with, sponsored by, or endorsed by the University of Chicago, Okta, Duo Security, or any other organization.

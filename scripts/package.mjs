@@ -27,7 +27,7 @@ async function copyTree(relative) {
 }
 await mkdir(staging, { recursive: true });
 for (const folder of ['extension', 'docs', 'scripts', 'test']) await copyTree(folder);
-const documents = ['README.md', 'README_zh.md', 'package.json', '.gitignore'];
+const documents = ['README.md', 'README_zh.md', 'LICENSE', 'package.json', '.gitignore'];
 for (const file of ['CHANGELOG.md', 'CHANGELOG_zh.md']) {
   try { await access(join(root, file)); documents.push(file); }
   catch (error) { if (error.code !== 'ENOENT') throw error; }
